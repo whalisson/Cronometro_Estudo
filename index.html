@@ -19,45 +19,48 @@
     <button onclick="resetTimer()"><i class="fas fa-rotate-left"></i> Resetar</button>
   </div>
 
+  <!-- Pomodoro -->
+  <div class="pomodoro-buttons">
+    <button id="btnTogglePomodoro"><i class="fas fa-clock"></i> Ativar Pomodoro</button>
+    <button id="btnStartPomodoro"><i class="fas fa-play-circle"></i> Iniciar Ciclo</button>
+  </div>
+
   <div class="edit-buttons">
     <button onclick="editarTempoHoje()"><i class="fas fa-pen"></i> Editar tempo de hoje</button>
     <button onclick="removerTempoHoje()"><i class="fas fa-trash"></i> Remover tempo de hoje</button>
   </div>
 
   <div class="log">
-  <h2>Horas Estudadas por Dia da Semana</h2>
-
-  <div class="meta-container">
+    <h2>Horas Estudadas por Dia da Semana</h2>
+    <div class="meta-container">
       <label for="metaHoras">Meta semanal (horas): </label>
       <input type="number" id="metaHoras" min="0" step="0.5" value="10">
     </div>
-
     <div id="totalSemana" class="total-semana-box">
       Total da semana: 0.00 h
     </div>
-
     <table id="studyTable">
-      <tr>
-        <th>Dia</th>
-        <th>Tempo Total</th>
-      </tr>
+      <tr><th>Dia</th><th>Tempo Total</th></tr>
     </table>
   </div>
 
-
-
-  <div class="calendar">
+  <!-- <div class="calendar">
     <h2>Calendário Anual</h2>
     <label for="yearSelector">Ano:</label>
     <select id="yearSelector"></select>
     <div id="calendarContainer"></div>
-  </div>
+  </div> -->
 
   <div class="charts">
     <h2>Gráficos de Desempenho</h2>
-    <canvas id="chartSemanal"></canvas>
+    <!-- <canvas id="chartSemanal"></canvas>
     <canvas id="chartMensal"></canvas>
-    <canvas id="chartAnual"></canvas>
+    <canvas id="chartAnual"></canvas> -->
+
+    <!-- Gráfico acumulado mensal -->
+    <canvas id="chartAcumuladoSemanal"></canvas>
+    <!-- Heatmap estilo GitHub -->
+    <div id="heatmapContainer"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

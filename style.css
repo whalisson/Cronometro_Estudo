@@ -254,3 +254,41 @@ canvas {
   color: white;
   border-left: 6px solid #155724;
 }
+
+
+/* … seu CSS atual … */
+
+/* --- Pomodoro Buttons --- */
+.pomodoro-buttons {
+  margin: 15px;
+}
+.pomodoro-buttons button {
+  background-color: #17a2b8;
+  margin: 8px;
+}
+.pomodoro-buttons button:hover {
+  background-color: #138496;
+}
+
+/* --- Heatmap estilo GitHub --- */
+#heatmapContainer {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 24px;
+  gap: 2px;
+  margin: 20px auto;
+  width: 90%;
+  max-width: 500px;
+}
+.heatmap-cell {
+  font-size: 0.75rem;
+  text-align: center;
+  border-radius: 4px;
+}
+.level-0 { background: #ebedf0; }
+.level-1 { background: #c6e48b; }
+.level-2 { background: #7bc96f; }
+.level-3 { background: #239a3b; }
+.level-4 { background: #196127; }
+
+
