@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cronômetro de Estudos</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -20,6 +21,12 @@
   </div>
 
   <!-- Pomodoro -->
+  <div class="pomodoro-config">
+    <label for="pomodoroFocus"><i class="fas fa-bullseye"></i> Foco (min):</label>
+    <input type="number" id="pomodoroFocus" min="1" step="1" value="25">
+    <label for="pomodoroBreak"><i class="fas fa-coffee"></i> Descanso (min):</label>
+    <input type="number" id="pomodoroBreak" min="1" step="1" value="5">
+  </div>
   <div class="pomodoro-buttons">
     <button id="btnTogglePomodoro"><i class="fas fa-clock"></i> Ativar Pomodoro</button>
     <button id="btnStartPomodoro"><i class="fas fa-play-circle"></i> Iniciar Ciclo</button>
@@ -44,22 +51,9 @@
     </table>
   </div>
 
-  <!-- <div class="calendar">
-    <h2>Calendário Anual</h2>
-    <label for="yearSelector">Ano:</label>
-    <select id="yearSelector"></select>
-    <div id="calendarContainer"></div>
-  </div> -->
-
   <div class="charts">
     <h2>Gráficos de Desempenho</h2>
-    <!-- <canvas id="chartSemanal"></canvas>
-    <canvas id="chartMensal"></canvas>
-    <canvas id="chartAnual"></canvas> -->
-
-    <!-- Gráfico acumulado mensal -->
     <canvas id="chartAcumuladoSemanal"></canvas>
-    <!-- Heatmap estilo GitHub -->
     <div id="heatmapContainer"></div>
   </div>
 

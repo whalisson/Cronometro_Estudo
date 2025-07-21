@@ -16,6 +16,17 @@ const calendarContainer = document.getElementById('calendarContainer');
 let studyData       = [0,0,0,0,0,0,0];
 let studyDataDetail = JSON.parse(localStorage.getItem('studyDataDetail')) || {};
 
+// --- Pomodoro Configuração ---
+const pomodoroFocusInput = document.getElementById('pomodoroFocus');
+const pomodoroBreakInput = document.getElementById('pomodoroBreak');
+const btnTogglePomodoro  = document.getElementById('btnTogglePomodoro');
+const btnStartPomodoro   = document.getElementById('btnStartPomodoro');
+const pomodoroConfig     = { focusDuration:25*60, breakDuration:5*60, cycles:4 };
+let pomodoroMode         = false;
+let currentCycle         = 0;
+let isOnBreak            = false;
+let pomodoroTimer;
+
 // --- Solicita permissão de notificações desktop ---
 if ("Notification" in window && Notification.permission !== "granted") {
   Notification.requestPermission();
@@ -23,12 +34,11 @@ if ("Notification" in window && Notification.permission !== "granted") {
 
 // ===== Helpers de data =====
 function parseLocalDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return new Date(y, m-1, d);
 }
-
 function getStartOfWeek(date) {
-  const day  = date.getDay();
+  const day = date.getDay();
   const diff = date.getDate() - day;
   return new Date(date.getFullYear(), date.getMonth(), diff);
 }
@@ -36,11 +46,10 @@ function getStartOfWeek(date) {
 // ===== Recalcular dados da semana atual =====
 function recalcularStudyData() {
   studyData = [0,0,0,0,0,0,0];
-  const today     = new Date();
+  const today = new Date();
   const weekStart = getStartOfWeek(today);
-  const weekEnd   = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate()+6);
   for (const key in studyDataDetail) {
     if (key.endsWith('_pomodoro')) continue;
     const d = parseLocalDate(key);
@@ -53,48 +62,46 @@ recalcularStudyData();
 
 // ===== Formatar segundos em HH:MM:SS =====
 function formatTime(sec) {
-  const h = Math.floor(sec/3600).toString().padStart(2,'0');
-  const m = Math.floor((sec%3600)/60).toString().padStart(2,'0');
-  const s = (sec%60).toString().padStart(2,'0');
+  const h=Math.floor(sec/3600).toString().padStart(2,'0');
+  const m=Math.floor((sec%3600)/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
   return `${h}:${m}:${s}`;
 }
 
 // ===== Timer padrão =====
-function startTimer() {
-  if (running) return;
-  running   = true;
-  startTime = Date.now();
-  timerInterval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime)/1000) + elapsedBefore;
-    display.textContent = formatTime(elapsed);
-  }, 200);
+function startTimer(){
+  if(running) return;
+  running=true;
+  startTime=Date.now();
+  timerInterval=setInterval(()=>{
+    const elapsed=Math.floor((Date.now()-startTime)/1000)+elapsedBefore;
+    display.textContent=formatTime(elapsed);
+  },200);
 }
-
-function pauseTimer() {
-  if (!running) return;
-  running = false;
+function pauseTimer(){
+  if(!running) return;
+  running=false;
   clearInterval(timerInterval);
   clearInterval(pomodoroTimer);
-  const elapsed = Math.floor((Date.now() - startTime)/1000);
-  elapsedBefore += elapsed;
+  const elapsed=Math.floor((Date.now()-startTime)/1000);
+  elapsedBefore+=elapsed;
   salvarTempoHoje(elapsed);
 }
-
 function resetTimer(){
-  running = false;
+  running=false;
   clearInterval(timerInterval);
   clearInterval(pomodoroTimer);
-  startTime = null;
-  elapsedBefore = 0;
-  display.textContent = "00:00:00";
+  startTime=null;
+  elapsedBefore=0;
+  display.textContent="00:00:00";
 }
 
 // ===== Salvar sessão normal =====
-function salvarTempoHoje(segundos = elapsedBefore) {
-  if (segundos <= 0) return;
-  const hoje    = new Date();
-  const dataISO = hoje.toISOString().slice(0,10);
-  studyDataDetail[dataISO] = (studyDataDetail[dataISO] || 0) + segundos/3600;
+function salvarTempoHoje(segundos=elapsedBefore){
+  if(segundos<=0) return;
+  const hoje=new Date();
+  const key=hoje.toISOString().slice(0,10);
+  studyDataDetail[key]=(studyDataDetail[key]||0)+segundos/3600;
   localStorage.setItem('studyDataDetail', JSON.stringify(studyDataDetail));
   recalcularStudyData();
   atualizarTabela();
@@ -103,17 +110,17 @@ function salvarTempoHoje(segundos = elapsedBefore) {
 }
 
 // ===== Editar tempo de hoje =====
-function editarTempoHoje() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const atual = studyDataDetail[hoje] || 0;
-  let entrada = prompt(`Editar horas estudadas para hoje (decimal):`, atual.toFixed(2));
-  if (entrada === null) return;
-  entrada = parseFloat(entrada);
-  if (isNaN(entrada) || entrada < 0) {
+function editarTempoHoje(){
+  const hoje=new Date().toISOString().slice(0,10);
+  const atual=studyDataDetail[hoje]||0;
+  let entrada=prompt('Editar horas estudadas para hoje (decimal):', atual.toFixed(2));
+  if(entrada===null) return;
+  entrada=parseFloat(entrada);
+  if(isNaN(entrada)||entrada<0){
     alert('Por favor insira um número válido.');
     return;
   }
-  studyDataDetail[hoje] = entrada;
+  studyDataDetail[hoje]=entrada;
   localStorage.setItem('studyDataDetail', JSON.stringify(studyDataDetail));
   recalcularStudyData();
   atualizarTabela();
@@ -122,9 +129,9 @@ function editarTempoHoje() {
 }
 
 // ===== Remover tempo de hoje =====
-function removerTempoHoje() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  if (studyDataDetail[hoje] !== undefined) {
+function removerTempoHoje(){
+  const hoje=new Date().toISOString().slice(0,10);
+  if(studyDataDetail[hoje]!==undefined){
     delete studyDataDetail[hoje];
     localStorage.setItem('studyDataDetail', JSON.stringify(studyDataDetail));
     recalcularStudyData();
@@ -136,82 +143,94 @@ function removerTempoHoje() {
   }
 }
 
-// ===== Pomodoro (25/5, 4 ciclos) =====
-const btnTogglePomodoro = document.getElementById('btnTogglePomodoro');
-const btnStartPomodoro  = document.getElementById('btnStartPomodoro');
-const pomodoroConfig   = { focusDuration:25*60, breakDuration:5*60, cycles:4 };
-let pomodoroMode = false;
-let currentCycle = 0;
-let isOnBreak    = false;
-let pomodoroTimer;
+// ===== Pomodoro Config Persistência =====
+function loadPomodoroStorage(){
+  const focusMin = parseInt(localStorage.getItem('pomodoroFocus'));
+  const breakMin = parseInt(localStorage.getItem('pomodoroBreak'));
+  if(!isNaN(focusMin)&& focusMin>0){
+    pomodoroConfig.focusDuration = focusMin*60;
+    pomodoroFocusInput.value = focusMin;
+  }
+  if(!isNaN(breakMin)&& breakMin>0){
+    pomodoroConfig.breakDuration = breakMin*60;
+    pomodoroBreakInput.value = breakMin;
+  }
+  updatePomodoroButton();
+}
+function savePomodoroStorage(){
+  localStorage.setItem('pomodoroFocus', pomodoroConfig.focusDuration/60);
+  localStorage.setItem('pomodoroBreak', pomodoroConfig.breakDuration/60);
+}
+function updatePomodoroConfigFromInputs(){
+  const foco = parseInt(pomodoroFocusInput.value);
+  const descanso = parseInt(pomodoroBreakInput.value);
+  if(!isNaN(foco)&&foco>0) pomodoroConfig.focusDuration = foco*60;
+  if(!isNaN(descanso)&&descanso>0) pomodoroConfig.breakDuration = descanso*60;
+  savePomodoroStorage();
+  updatePomodoroButton();
+}
+function updatePomodoroButton(){
+  btnStartPomodoro.textContent = `Iniciar Pomodoro (${pomodoroConfig.focusDuration/60}m foco / ${pomodoroConfig.breakDuration/60}m descanso)`;
+}
 
-btnTogglePomodoro.addEventListener('click', () => {
+// Ao mudar inputs, salvar e atualizar
+pomodoroFocusInput.addEventListener('change', updatePomodoroConfigFromInputs);
+pomodoroBreakInput.addEventListener('change', updatePomodoroConfigFromInputs);
+
+// Carrega configurações ao iniciar
+loadPomodoroStorage();
+
+// ===== Pomodoro =====
+btnTogglePomodoro.addEventListener('click', ()=>{
   pomodoroMode = !pomodoroMode;
-  btnTogglePomodoro.textContent = pomodoroMode ? 'Desativar Pomodoro' : 'Ativar Pomodoro';
+  btnTogglePomodoro.textContent = pomodoroMode?'Desativar Pomodoro':'Ativar Pomodoro';
   clearInterval(timerInterval);
   clearInterval(pomodoroTimer);
   resetTimer();
 });
+btnStartPomodoro.addEventListener('click', ()=>{ if(pomodoroMode) startPomodoroCycle(); });
 
-btnStartPomodoro.addEventListener('click', () => {
-  if (pomodoroMode) startPomodoroCycle();
-});
-
-function startPomodoroCycle() {
+function startPomodoroCycle(){
   clearInterval(pomodoroTimer);
-  const duration = isOnBreak ? pomodoroConfig.breakDuration : pomodoroConfig.focusDuration;
-  startTime = Date.now();
-  elapsedBefore = 0;
-  running = true;
-  pomodoroTimer = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime)/1000);
-    display.textContent = formatTime(elapsed);
-    if (elapsed >= duration) {
+  const duration = isOnBreak?pomodoroConfig.breakDuration:pomodoroConfig.focusDuration;
+  startTime=Date.now();
+  elapsedBefore=0;
+  running=true;
+  pomodoroTimer=setInterval(()=>{
+    const elapsed=Math.floor((Date.now()-startTime)/1000);
+    display.textContent=formatTime(elapsed);
+    if(elapsed>=duration){
       clearInterval(pomodoroTimer);
       onPomodoroEnd();
     }
-  }, 500);
+  },500);
 }
-
-function onPomodoroEnd() {
-  running = false;
-  elapsedBefore = 0;
-  let title, body;
-  if (!isOnBreak) {
-    title = 'Intervalo iniciado';
-    body  = `Descanse por ${pomodoroConfig.breakDuration/60} minutos.`;
-    salvarPomodoroSession(pomodoroConfig.focusDuration);
-    currentCycle++;
-  } else {
-    title = 'Período de foco iniciado';
-    body  = `Estude por ${pomodoroConfig.focusDuration/60} minutos.`;
+function onPomodoroEnd(){
+  running=false;
+  elapsedBefore=0;
+  let title,body;
+  if(!isOnBreak){
+    title='Intervalo iniciado'; body=`Descanse por ${pomodoroConfig.breakDuration/60} minutos.`;
+    salvarPomodoroSession(pomodoroConfig.focusDuration); currentCycle++;
+  } else{
+    title='Período de foco iniciado'; body=`Estude por ${pomodoroConfig.focusDuration/60} minutos.`;
   }
-  if (Notification.permission === 'granted') {
-    new Notification(title, { body });
-  }
-  isOnBreak = !isOnBreak;
-  if (currentCycle >= pomodoroConfig.cycles) {
+  if(Notification.permission==='granted') new Notification(title,{body});
+  isOnBreak=!isOnBreak;
+  if(currentCycle>=pomodoroConfig.cycles){
     alert(`Você completou ${pomodoroConfig.cycles} ciclos Pomodoro!`);
-    currentCycle = 0;
-    isOnBreak    = false;
-    pomodoroMode = false;
+    currentCycle=0; isOnBreak=false; pomodoroMode=false;
     clearInterval(pomodoroTimer);
-    btnTogglePomodoro.textContent = 'Ativar Pomodoro';
+    btnTogglePomodoro.textContent='Ativar Pomodoro';
     resetTimer();
-  } else {
-    startPomodoroCycle();
-  }
+  } else { startPomodoroCycle(); }
 }
-
-function salvarPomodoroSession(segundos) {
-  const hoje = new Date();
-  const key  = hoje.toISOString().slice(0,10) + '_pomodoro';
-  studyDataDetail[key] = (studyDataDetail[key] || 0) + segundos/3600;
+function salvarPomodoroSession(segundos){
+  const hoje=new Date();
+  const key=hoje.toISOString().slice(0,10)+'_pomodoro';
+  studyDataDetail[key]=(studyDataDetail[key]||0)+segundos/3600;
   localStorage.setItem('studyDataDetail', JSON.stringify(studyDataDetail));
-  recalcularStudyData();
-  atualizarTabela();
-  atualizarCalendario();
-  atualizarGraficos();
+  recalcularStudyData(); atualizarTabela(); atualizarCalendario(); atualizarGraficos();
 }
 
 // ===== Atualização da tabela =====
