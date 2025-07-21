@@ -1,0 +1,256 @@
+body {
+  font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+  margin: 0;
+  padding: 0;
+  color: #333;
+  text-align: center;
+}
+
+h1, h2 {
+  margin-top: 20px;
+  color: #222;
+  text-shadow: 1px 1px 1px #ccc;
+}
+
+.timer {
+  font-size: 48px;
+  margin: 20px auto;
+  font-weight: bold;
+  color: #444;
+  text-shadow: 1px 1px 2px #ccc;
+}
+
+button {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 10px 20px;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.buttons button {
+  background-color: #28a745;
+  margin: 8px;
+}
+
+.buttons button:hover {
+  background-color: #218838;
+}
+
+.edit-buttons {
+  margin-top: 10px;
+}
+
+.edit-buttons button {
+  margin: 8px;
+  background-color: #ffc107;
+}
+
+.edit-buttons button:hover {
+  background-color: #e0a800;
+}
+
+.edit-buttons button:last-child {
+  background-color: #dc3545;
+}
+
+.edit-buttons button:last-child:hover {
+  background-color: #c82333;
+}
+
+table {
+  margin: 0 auto;
+  border-collapse: collapse;
+  width: 70%;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+th {
+  background-color: #007bff;
+  color: white;
+}
+
+.calendar {
+  margin: 40px auto;
+  width: 95%;
+  max-width: 1200px;
+  text-align: center;
+}
+
+#yearSelector {
+  margin: 10px 0;
+  padding: 6px;
+  font-size: 16px;
+  border-radius: 6px;
+}
+
+.month {
+  display: inline-block;
+  width: 270px;
+  margin: 10px;
+  vertical-align: top;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.month-header {
+  background: #007bff;
+  color: white;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-size: 13px;
+  padding: 10px;
+}
+
+.day-name {
+  font-weight: bold;
+  background: #f8f9fa;
+  padding: 4px;
+}
+
+.day {
+  padding: 6px;
+  border: 1px solid #f1f1f1;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  position: relative;
+}
+
+.day:hover {
+  background-color: #e6f0ff;
+}
+
+.day.has-study {
+  background-color: #d4edda;
+  font-weight: bold;
+  color: #155724;
+}
+
+.day.has-study::after {
+  content: "★";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 12px;
+  color: #28a745;
+}
+
+.charts {
+  width: 90%;
+  max-width: 1000px;
+  margin: 40px auto;
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+canvas {
+  margin-top: 20px;
+  max-width: 100%;
+}
+
+.total-semana-box {
+  display: inline-block;
+  background-color: #e6f4ff;
+  color: #003366;
+  padding: 12px 20px;
+  margin: 15px auto;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+  border-left: 6px solid #007bff;
+}
+
+.timer-box {
+  display: inline-block;
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 20px 40px;
+  margin: 20px auto;
+  border-radius: 16px;
+  box-shadow: 3px 3px 10px rgba(0,0,0,0.1);
+  border-left: 6px solid #ffc107;
+}
+
+.meta-container {
+  margin-top: 10px;
+  font-size: 16px;
+}
+
+#metaHoras {
+  padding: 6px 10px;
+  font-size: 16px;
+  width: 80px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-left: 8px;
+}
+
+.total-semana-box {
+  display: inline-block;
+  padding: 12px 20px;
+  margin: 15px auto;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Cores de progresso */
+.meta-baixa {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 6px solid #dc3545;
+}
+
+.meta-media-baixa {
+  background-color: #fff3cd;
+  color: #856404;
+  border-left: 6px solid #ffc107;
+}
+
+.meta-media-alta {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-left: 6px solid #17a2b8;
+}
+
+.meta-quase {
+  background-color: #c3e6cb;
+  color: #155724;
+  border-left: 6px solid #28a745;
+}
+
+.meta-completa {
+  background-color: #1e7e34;
+  color: white;
+  border-left: 6px solid #155724;
+}
