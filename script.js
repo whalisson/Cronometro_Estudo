@@ -653,7 +653,8 @@ const DataIO = {
       points:          Store.points,
       streak:          Store.streak,
       lastStudyDay:    Store.lastStudyDay,
-      metaSemanal:     DOM.metaHorasInput.value
+      metaSemanal:     DOM.metaHorasInput.value,
+      notes:           localStorage.getItem('userNotes') || ''
     };
     const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
     const url  = URL.createObjectURL(blob);
@@ -677,6 +678,12 @@ const DataIO = {
           Store.metaSemanal = data.metaSemanal;
           DOM.metaHorasInput.value = data.metaSemanal;
         }
+
+        if(data.notes !== undefined){
+          localStorage.setItem('userNotes', data.notes);
+          const notesArea = document.getElementById('notesArea');
+          if(notesArea) notesArea.value = data.notes;
+        }
         Recalc.all();
         Charts.renderMetaHistory();
         Day.updateStreak();
@@ -695,6 +702,7 @@ const DataIO = {
     }
   }
 };
+
 
 /* ---------------------------
    12. Tabs & Tema
@@ -732,6 +740,37 @@ const Theme = {
   }
 };
 
+/* ---------------------------
+   11. Notas (notes)
+---------------------------- */
+const Notes = {
+  init(){
+    this.area     = document.getElementById('notesArea');
+    this.clearBtn = document.getElementById('clearNotesBtn');
+    if(!this.area) return;
+    this.KEY = 'userNotes';
+
+    // Carrega
+    this.area.value = localStorage.getItem(this.KEY) || '';
+
+    // Autosave (debounce)
+    let timeout;
+    this.area.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        localStorage.setItem(this.KEY, this.area.value);
+      }, 300);
+    });
+
+    // Limpar
+    this.clearBtn.addEventListener('click', () => {
+      if(this.area.value && confirm('Limpar todas as notas?')){
+        this.area.value = '';
+        localStorage.removeItem(this.KEY);
+      }
+    });
+  }
+};
 /* ---------------------------
    13. Eventos
 ---------------------------- */
@@ -784,7 +823,7 @@ function init(){
   Tabs.init();
   Theme.init();
   bindEvents();
-
+  Notes.init();
   setTimeout(()=>document.getElementById('loader')?.remove(), 900);
 }
 init();

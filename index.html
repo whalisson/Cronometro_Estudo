@@ -24,6 +24,7 @@
       <button data-tab="timer"   class="nav-btn active" aria-label="Timer"><i class="fas fa-clock"></i></button>
       <button data-tab="metrics" class="nav-btn" aria-label="Métricas"><i class="fas fa-chart-bar"></i></button>
       <button data-tab="settings" class="nav-btn" aria-label="Configurações"><i class="fas fa-gear"></i></button>
+      <button data-tab="notes"    class="nav-btn" aria-label="Notas"><i class="fas fa-sticky-note"></i></button>
       <span class="nav-indicator"></span>
     </nav>
   </header>
@@ -113,6 +114,18 @@
       <div class="card">
         <h2>Resetar Tudo</h2>
         <button id="btnHardReset" class="danger"><i class="fas fa-bomb"></i> Limpar LocalStorage</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- TAB NOTAS -->
+    <section id="tab-notes" class="tab" aria-labelledby="Notas">
+      <div class="card notes-card">
+        <h2><i class="fas fa-sticky-note"></i> Minhas Notas</h2>
+        <textarea id="notesArea" placeholder="Escreva suas notas aqui..."></textarea>
+        <div class="buttons">
+          <button id="clearNotesBtn"><i class="fas fa-trash-alt"></i> Limpar Notas</button>
+        </div>
       </div>
     </section>
   </main>

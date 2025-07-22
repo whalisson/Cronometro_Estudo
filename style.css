@@ -294,7 +294,7 @@ canvas{margin-top:20px;max-width:100%;}
 }
 .timeline-label{
   width:var(--label-w);flex:0 0 var(--label-w);
-  text-align:right;margin-right:10px;color:#555;padding-top:14px;
+  text-align:right;margin-right:24px;color:#555;padding-top:14px;
 }
 :root.dark .timeline-label{color:#ccc;}
 .timeline-track{position:relative;flex:1 1 auto;height:32px;}
@@ -357,4 +357,33 @@ canvas{margin-top:20px;max-width:100%;}
   .timer{font-size:36px;}
   .topbar h1{font-size:18px;}
   .nav-btn{font-size:20px;}
+}
+
+/* =========================
+   NOTAS
+   ========================= */
+.notes-card textarea#notesArea {
+  width: 100%;
+  height: 50vh;
+  padding: 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.1);
+  background: var(--card);
+  color: var(--text);
+  transition: border-color .3s;
+}
+.notes-card textarea#notesArea:focus {
+  border-color: var(--prim);
+  outline: none;
+}
+.notes-card .buttons {
+  margin-top: 12px;
+}
+.notes-card .buttons button {
+  background-color: var(--danger);
+  color: #fff;
 }
