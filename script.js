@@ -153,53 +153,74 @@ const UI = {
    5. Timer (livre)
 ---------------------------- */
 const Timer = {
-  toggle(){ State.running ? Timer.pause() : Timer.start(); },
+  toggle() {
+    State.running ? Timer.pause() : Timer.start();
+  },
 
-  start(){
-    if(State.running) return;
+  start() {
+    if (State.running) return;
     State.running = true;
     State.startTime = Date.now();
     State.sessionStartTs = Date.now();
     UI.setRunButton(true);
 
-    State.timerInterval = setInterval(()=>{
-      const elapsed = Math.floor((Date.now() - State.startTime)/1000) + State.elapsedBefore;
+    State.timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - State.startTime) / 1000) + State.elapsedBefore;
       DOM.display.textContent = Utils.formatTime(elapsed);
-      UI.updateRing(Math.min(elapsed/(60*60), 1)); // referência: 1h
+      UI.updateRing(Math.min(elapsed / (60 * 60), 1)); // referência: 1h
     }, 200);
   },
 
-  pause(){
-    if(!State.running) return;
+  pause() {
+    if (!State.running) return;
     State.running = false;
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
     UI.setRunButton(false);
 
-    const elapsed = Math.floor((Date.now() - State.startTime)/1000);
+    const elapsed = Math.floor((Date.now() - State.startTime) / 1000);
     State.elapsedBefore += elapsed;
 
-    if(!(State.pomodoroMode && State.isOnBreak) && State.sessionStartTs){
+    if (!(State.pomodoroMode && State.isOnBreak) && State.sessionStartTs) {
       Sessions.save(State.sessionStartTs, Date.now(), State.pomodoroMode ? 'focus' : 'normal');
       State.sessionStartTs = null;
     }
-    if(!(State.pomodoroMode && State.isOnBreak)) Day.saveToday(elapsed);
+    if (!(State.pomodoroMode && State.isOnBreak)) Day.saveToday(elapsed);
 
     UI.updateRing(0);
   },
 
-  reset(){
+  /**
+   * Reseta o cronômetro e, se estiver em modo Pomodoro,
+   * reinicia também ciclos e estado de descanso.
+   */
+  reset() {
+    // Para timers ativos
     State.running = false;
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
+
+    // Estado básico
     State.startTime = null;
     State.elapsedBefore = 0;
     State.sessionStartTs = null;
     DOM.display.textContent = "00:00:00";
     UI.setRunButton(false);
     UI.updateRing(0);
+
+    // Se em Pomodoro, zera ciclos e volta ao modo foco
+    if (State.pomodoroMode) {
+      State.currentCycle = 0;
+      State.isOnBreak = false;
+      // Atualiza texto dos botões, se necessário
+      Pomodoro.updateBtn();
+      DOM.btnTogglePomodoro.textContent = 'Desativar Pomodoro';
+    }
   }
 };
+
+// Expor a função global para o botão inline
+window.resetTimer = () => Timer.reset();
 
 /* ---------------------------
    6. Sessions (Timeline logs)
