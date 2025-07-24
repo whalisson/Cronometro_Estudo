@@ -552,7 +552,24 @@ const Recalc = {
     Table.update();
     Charts.update();
     Timeline.render();
-  }
+    Recalc.updateWeeklyProgress();
+  },
+  updateWeeklyProgress() {
+    const arr = Store.studyDataArray;
+    const total = arr.reduce((a,b)=>a+b,0); // soma total da semana
+    const meta = parseFloat(DOM.metaHorasInput.value) || 0;
+
+    // Atualiza texto
+    const totalEl = document.getElementById('totalSemana');
+    if (totalEl) totalEl.textContent = `Total da semana: ${Utils.formatDecimalToHHMM(total)}`;
+
+    // Atualiza barra
+    const fillEl = DOM.weeklyFill;
+    if (fillEl) {
+      const pct = meta > 0 ? Math.min(total / meta, 1) * 100 : 0;
+      fillEl.style.width = `${pct}%`;
+    }
+  },
 };
 
 const Table = {
