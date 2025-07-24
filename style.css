@@ -387,3 +387,203 @@ canvas{margin-top:20px;max-width:100%;}
   background-color: var(--danger);
   color: #fff;
 }
+
+/* Botões de Ação na Tabela */
+.btn-edit {
+  background: var(--warn);
+}
+.btn-edit:hover {
+  background: var(--warn-hover, #e0a800);
+}
+
+.btn-add {
+  background: var(--succ);
+}
+.btn-add:hover {
+  background: var(--succ-hover, #218838);
+}
+
+/* 1. Timer Ring mais “macio” */
+.timer-ring {
+  position: relative;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--yellow-soft);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: transform 0.4s ease;
+}
+.timer-ring:hover {
+  transform: scale(1.03);
+}
+
+/* 2. Pizza progress com easing suave */
+.pizza {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  transition: background 0.8s ease-out;
+}
+
+/* 3. Ícone com micro-animação */
+.timer-icon {
+  font-size: 1.4rem;
+  color: var(--orange);
+  animation: pulse 3s infinite ease-in-out;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1);     opacity: 1; }
+  50%     { transform: scale(1.15);  opacity: 0.8; }
+}
+
+.timer-ring .timer-icon {
+  position: absolute;
+  top: 20%;
+  left: 45.5%;
+  transform: translate(-50%, -50%);
+  z-index: 2;    /* acima da pizza */
+  pointer-events: none; /* se quiser que cliques passem por ele */
+}
+
+.timer {
+  font-size: 2.7rem;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: color 0.3s ease;
+}
+
+button {
+  padding: 0.6em 1.2em;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* 6. Cores dos botões de ação */
+.btn-edit {
+  background: var(--warn);
+  color: #fff;
+}
+.btn-edit:hover {
+  background: var(--warn-hover, #e0a800);
+}
+.btn-add {
+  background: var(--succ);
+  color: #fff;
+}
+.btn-add:hover {
+  background: var(--succ-hover, #218838);
+}
+
+/* Layout da célula com tempo e botões */
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.time-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.action-buttons button {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  box-shadow: var(--sh-sm);
+}
+
+/* Botões menores na tabela */
+.btn-edit { background: var(--warn); color: #fff; }
+.btn-edit:hover { background: #e0a800; }
+.btn-add { background: var(--succ); color: #fff; }
+.btn-add:hover { background: #218838; }
+
+
+
+#btnExport,
+#btnImport {
+  background: #4a4a4a; /* cinza escuro */
+  color: #fff;
+}
+#btnExport:hover,
+#btnImport:hover {
+  background: #333; /* ainda mais escuro no hover */
+}
+
+/* aplica transição suave a quase tudo */
+* {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+
+/* botões com hover “lift” e sombra leve */
+button {
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+/* estrutura básica */
+#studyTable {
+  width: 90%;
+  max-width: 800px;
+  margin: 1.5rem auto;
+  table-layout: fixed;
+  text-align: center;
+  border-collapse: collapse;
+}
+#studyTable th,
+#studyTable td {
+  padding: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Tempo e botões juntos */
+.time-text {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.edit-icon,
+.add-icon {
+  font-size: 0.9rem;
+  margin: 0 0.2rem;
+  color: #777;
+  cursor: pointer;
+  transition: color .2s;
+}
+.edit-icon:hover,
+.add-icon:hover {
+  color: #555;
+}
+
+/* separador leve entre header e body */
+#studyTable thead th {
+  background: var(--prim);
+  color: #fff;
+  border-bottom: 2px solid darken(var(--prim),10%);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

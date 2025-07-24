@@ -111,6 +111,7 @@ const Utils = {
   weekStartISO(d=new Date()){
     return Utils.startOfWeek(d).toISOString().slice(0,10);
   },
+  
   formatTime(sec){
     const h = String(Math.floor(sec/3600)).padStart(2,'0');
     const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
@@ -122,6 +123,20 @@ const Utils = {
   },
   yesterdayISO(){
     return new Date(Date.now()-ONE_DAY_MS).toISOString().slice(0,10);
+  },
+   // Converte horas decimais (e.g. 1.75) em string "HH:MM"
+  formatDecimalToHHMM(decimal) {
+    const totalMinutes = Math.round(decimal * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  },
+
+  // Converte string "HH:MM" em horas decimais (e.g. "01:45" → 1.75)
+  parseHHMM(str) {
+    const parts = str.split(':').map(Number);
+    if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+    return parts[0] + parts[1] / 60;
   }
 };
 
@@ -129,9 +144,13 @@ const Utils = {
    4. UI Helpers
 ---------------------------- */
 const UI = {
-  updateRing(percent){
-    if(!DOM.ringFg) return;
-    DOM.ringFg.style.strokeDashoffset = RING_TOTAL - RING_TOTAL * percent;
+  updateRing(percent) {
+    const pizza = document.querySelector('.timer-ring .pizza');
+    if (!pizza) return;
+    const deg = percent * 360;
+    // do começo (0°) até deg usamos a cor de progresso, depois fundo
+    pizza.style.background = 
+      `conic-gradient(var(--orange) 0deg ${deg}deg, var(--yellow-soft) ${deg}deg 360deg)`;
   },
   setRunButton(running){
     if(!DOM.btnStartPause) return;
@@ -181,38 +200,73 @@ const Timer = {
     const elapsed = Math.floor((Date.now() - State.startTime) / 1000);
     State.elapsedBefore += elapsed;
 
-    if (!(State.pomodoroMode && State.isOnBreak) && State.sessionStartTs) {
-      Sessions.save(State.sessionStartTs, Date.now(), State.pomodoroMode ? 'focus' : 'normal');
-      State.sessionStartTs = null;
-    }
-    if (!(State.pomodoroMode && State.isOnBreak)) Day.saveToday(elapsed);
-
     UI.updateRing(0);
   },
+
 
   /**
    * Reseta o cronômetro e, se estiver em modo Pomodoro,
    * reinicia também ciclos e estado de descanso.
    */
   reset() {
-    // Para timers ativos
-    State.running = false;
+    // ── 1) Se houver sessão iniciada (rodando ou pausada), calcula e salva ───
+    if (State.sessionStartTs) {
+      const now     = Date.now();
+      // começa com o que já foi acumulado antes do pause
+      let elapsed   = State.elapsedBefore;
+      // se ainda estivesse “running” (não pausou), soma o intervalo atual
+      if (State.running && State.startTime) {
+        elapsed += Math.floor((now - State.startTime) / 1000);
+      }
+
+      // salva no timeline (focus ou normal)
+      const type = (State.pomodoroMode && !State.isOnBreak) ? 'focus' : 'normal';
+      Sessions.save(State.sessionStartTs, now, type);
+      State.sessionStartTs = null;
+
+      // salva nas horas estudadas
+      if (State.pomodoroMode && !State.isOnBreak) {
+        Day.savePomodoro(elapsed);
+        // recalc nos gráficos, pois savePomodoro não faz isso
+        Recalc.all();
+      } else {
+        Day.saveToday(elapsed);
+        // saveToday já chama Recalc.all() internamente
+      }
+    }
+     DOM.display.textContent = "00:00:00";
+  UI.setRunButton(false);
+  UI.updateRing(0);
+
+  // ── REABILITA O BOTÃO DE POMODORO ───────────────────────────────
+  if (DOM.btnStartPomodoro) {
+    DOM.btnStartPomodoro.disabled = false;
+    Pomodoro.updateBtn();
+  }
+
+  // ── reconfigura ciclos se estava em Pomodoro (se aplicável) ──────
+  if (State.pomodoroMode) {
+    State.currentCycle = 0;
+    State.isOnBreak    = false;
+    Pomodoro.updateBtn();
+  }
+    // ── 2) Para timers ativos e zera estado básico ───────────────────────
+    State.running       = false;
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
 
-    // Estado básico
-    State.startTime = null;
+    State.startTime     = null;
     State.elapsedBefore = 0;
-    State.sessionStartTs = null;
+    State.sessionStartTs= null;
+
     DOM.display.textContent = "00:00:00";
     UI.setRunButton(false);
     UI.updateRing(0);
 
-    // Se em Pomodoro, zera ciclos e volta ao modo foco
+    // ── 3) Se em Pomodoro, reseta ciclos e volta ao modo foco ───────────
     if (State.pomodoroMode) {
       State.currentCycle = 0;
-      State.isOnBreak = false;
-      // Atualiza texto dos botões, se necessário
+      State.isOnBreak    = false;
       Pomodoro.updateBtn();
       DOM.btnTogglePomodoro.textContent = 'Desativar Pomodoro';
     }
@@ -220,7 +274,12 @@ const Timer = {
 };
 
 // Expor a função global para o botão inline
-window.resetTimer = () => Timer.reset();
+window.resetTimer = () => {
+  Timer.reset();
+  // reabilita e restaura texto do botão Pomodoro
+  DOM.btnStartPomodoro.disabled = false;
+  Pomodoro.updateBtn();
+};
 
 /* ---------------------------
    6. Sessions (Timeline logs)
@@ -284,8 +343,10 @@ const Pomodoro = {
     Pomodoro.saveConfig();
     Pomodoro.updateBtn();
   },
-  updateBtn(){
-    DOM.btnStartPomodoro.textContent = `Iniciar Pomodoro (${pomodoroConfig.focusDuration/60}m foco / ${pomodoroConfig.breakDuration/60}m descanso)`;
+  updateBtn() {
+  DOM.btnStartPomodoro.innerHTML =
+    `<i class="fas fa-play-circle"></i> ` +
+    `Iniciar Pomodoro (${pomodoroConfig.focusDuration/60}m | ${pomodoroConfig.breakDuration/60}m)`;
   },
 
   toggleMode(){
@@ -426,6 +487,37 @@ const Day = {
     Store.lastStudyDay = today;
     Store.streak = streak;
     if(DOM.streakCounter) DOM.streakCounter.textContent = `${streak} 🔥`;
+  },
+
+  editDate(key) {
+    const detail = Store.studyDataDetail;
+    const current = detail[key] || 0;
+    const currentStr = Utils.formatDecimalToHHMM(current);
+    let entrada = prompt(`Editar tempo para ${key} (HH:MM):`, currentStr);
+    if (entrada === null) return;
+    const dec = Utils.parseHHMM(entrada);
+    if (dec === null) {
+      alert('Formato inválido. Use HH:MM');
+      return;
+    }
+    detail[key] = dec;
+    Store.studyDataDetail = detail;
+    Recalc.all();
+  },
+
+  addDate(key) {
+    const detail = Store.studyDataDetail;
+    const current = detail[key] || 0;
+    let entrada = prompt(`Adicionar tempo para ${key} (HH:MM):`, '00:00');
+    if (entrada === null) return;
+    const dec = Utils.parseHHMM(entrada);
+    if (dec === null) {
+      alert('Formato inválido. Use HH:MM');
+      return;
+    }
+    detail[key] = current + dec;
+    Store.studyDataDetail = detail;
+    Recalc.all();
   }
 };
 
@@ -464,45 +556,43 @@ const Recalc = {
 };
 
 const Table = {
-  update(){
+  update() {
     const studyData = Recalc.weeklyArray();
+    const dias      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const ws        = Utils.startOfWeek(new Date());
 
-    // limpa linhas
-    DOM.studyTable.querySelectorAll('tr:not(:first-child)').forEach(tr=>tr.remove());
+    // 1) Monta o cabeçalho com os dias
+    const headerRow = document.getElementById('studyHeader');
+    headerRow.innerHTML = '';
+    dias.forEach(d => {
+      const th = document.createElement('th');
+      th.textContent = d;
+      headerRow.appendChild(th);
+    });
 
-    const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-    let total = 0;
+    // 2) Monta a linha de valores (tempo + ícones)
+    const valuesRow = document.getElementById('studyValues');
+    valuesRow.innerHTML = '';
+    studyData.forEach((decimal, i) => {
+      // dataKey para os callbacks
+      const dateObj = new Date(ws);
+      dateObj.setDate(ws.getDate() + i);
+      const dateKey = dateObj.toISOString().slice(0,10);
 
-    for(let i=0;i<7;i++){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${dias[i]}</td><td>${studyData[i].toFixed(2)} h</td>`;
-      DOM.studyTable.appendChild(tr);
-      total += studyData[i];
-    }
-
-    // UI meta semanal
-    const meta = parseFloat(DOM.metaHorasInput.value) || 0;
-    const pct  = meta>0 ? (total/meta)*100 : 0;
-    const box  = document.getElementById('totalSemana');
-    box.textContent = `Total da semana: ${total.toFixed(2)} h`;
-    box.className   = 'total-semana-box';
-
-    if      (pct <= 25) box.classList.add('meta-baixa');
-    else if (pct <= 50) box.classList.add('meta-media-baixa');
-    else if (pct <= 75) box.classList.add('meta-media-alta');
-    else if (pct < 100) box.classList.add('meta-quase');
-    else {
-      box.classList.add('meta-completa');
-      if(!box.dataset.done){
-        box.dataset.done = 'true';
-        UI.confetti();
-        box.classList.add('wiggle');
-        setTimeout(()=>box.classList.remove('wiggle'),600);
-      }
-    }
-    if(DOM.weeklyFill) DOM.weeklyFill.style.width = Math.min(pct,100)+'%';
+      const td = document.createElement('td');
+      // formata em "HH:MM"
+      const hhmm = Utils.formatDecimalToHHMM(decimal);
+      td.innerHTML = `
+        <span class="time-text">${hhmm}</span>
+        <i class="fas fa-pen edit-icon" onclick="Day.editDate('${dateKey}')"></i>
+        <i class="fas fa-plus add-icon" onclick="Day.addDate('${dateKey}')"></i>
+      `;
+      valuesRow.appendChild(td);
+    });
   }
 };
+
+
 
 const Timeline = {
   render(date=new Date()){
@@ -623,34 +713,46 @@ const Charts = {
     });
   },
 
-  renderHeatmap(){
-    const container = document.getElementById('heatmapContainer');
-    if(!container) return;
+  renderHeatmap() {
+  const container = document.getElementById('heatmapContainer');
+  if (!container) return;
     container.innerHTML = '';
 
     const hoje = new Date();
     const ano  = hoje.getFullYear();
     const mes  = hoje.getMonth();
-    const dias = new Date(ano, mes+1, 0).getDate();
+    const dias = new Date(ano, mes + 1, 0).getDate();
 
-    const detail = Store.studyDataDetail;
-    let maxH = 0;
-    for(let d=1; d<=dias; d++){
-      const k = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const h = detail[k] || 0;
-      if(h>maxH) maxH = h;
-    }
-    for(let d=1; d<=dias; d++){
-      const k = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const h = detail[k] || 0;
-      const lvl = maxH ? Math.ceil((h/maxH)*4) : 0;
+    const detail   = Store.studyDataDetail;
+    const metaSem  = parseFloat(DOM.metaHorasInput.value) || 0;
+    const metaDia  = metaSem / 7;
+
+    for (let d = 1; d <= dias; d++) {
+      const dayStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const hNorm   = detail[dayStr]               || 0;
+      const hPomo   = detail[`${dayStr}_pomodoro`] || 0;
+      const hTot    = hNorm + hPomo;
+
+      // percentual em relação à meta diária (corta em 1)
+      const pct = metaDia > 0 ? Math.min(hTot / metaDia, 1) : 0;
+
+      // monta o <div>
       const cell = document.createElement('div');
-      cell.className = `heatmap-cell level-${lvl}`;
-      cell.title     = `${k}: ${h.toFixed(2)} h`;
+      cell.className = 'heatmap-cell';
       cell.textContent = d;
+      cell.title = `${dayStr}: ${hTot.toFixed(2)} h (meta diária: ${metaDia.toFixed(2)} h)`;
+
+      // cor de fundo: verde com alpha proporcional
+      cell.style.backgroundColor = `rgba(34, 139, 34, ${pct})`;
+      // opcional: borda clara para dias sem estudo
+      if (pct === 0) {
+        cell.style.border = '1px solid rgba(34,139,34,0.2)';
+      }
+
       container.appendChild(cell);
     }
   },
+
 
   update(){
     Charts.renderCumulative();
@@ -806,7 +908,17 @@ function bindEvents(){
   });
 
   // Pomodoro
-  DOM.btnTogglePomodoro?.addEventListener('click', Pomodoro.toggleMode);
+  DOM.btnStartPomodoro?.addEventListener('click', () => {
+  if (!State.pomodoroMode) {
+    State.pomodoroMode = true;
+    Pomodoro.updateBtn();
+  }
+  Pomodoro.startCycle();
+
+  // bloqueia o botão e mostra ícone de execução
+  DOM.btnStartPomodoro.disabled = true;
+  DOM.btnStartPomodoro.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  });
   DOM.btnStartPomodoro?.addEventListener('click', ()=>{ if(State.pomodoroMode) Pomodoro.startCycle(); });
   [DOM.pomodoroFocusInput, DOM.pomodoroBreakInput].forEach(el=> el?.addEventListener('change', Pomodoro.updateFromInputs));
 
