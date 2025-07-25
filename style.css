@@ -587,3 +587,10 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.timeline-segment.pause {
+  background: #6c757d; /* cinza */
+}
+
+.timeline-segment.break { background: var(--info); }
+.timeline-segment.pause { background: var(--info); }

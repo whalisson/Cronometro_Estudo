@@ -180,7 +180,17 @@ const Timer = {
     if (State.running) return;
     State.running = true;
     State.startTime = Date.now();
-    State.sessionStartTs = Date.now();
+
+    // Se não havia sessão em andamento, inicia como "focus"
+    if (!State.sessionStartTs) {
+        State.sessionStartTs = Date.now();
+    }
+    // Se voltar de uma pausa aberta, salva seu fim
+    if (State.pauseStartTs) {
+      const pauseEnd = Date.now();
+      Sessions.save(State.pauseStartTs, pauseEnd, 'pause');
+      State.pauseStartTs = null;
+    }
     UI.setRunButton(true);
 
     State.timerInterval = setInterval(() => {
@@ -197,12 +207,25 @@ const Timer = {
     clearInterval(State.pomodoroTimer);
     UI.setRunButton(false);
 
-    const elapsed = Math.floor((Date.now() - State.startTime) / 1000);
+    const now = Date.now();
+    const elapsed = Math.floor((now - State.startTime) / 1000);
     State.elapsedBefore += elapsed;
 
+    // Fecha a sessão ativa como "focus"
+    if (State.sessionStartTs) {
+        Sessions.save(State.sessionStartTs, now, 'focus');
+        Day.saveToday((now - State.sessionStartTs) / 1000); // soma horas reais
+    }
+
+    // Cria um pequeno bloco de pausa (para mostrar no timeline)
+    Sessions.save(now, now + 60 * 1000, 'pause'); // pausa visual de 1min
+
+    Recalc.all();
+
+    // Reseta sessionStartTs (será reaberto no próximo play)
+    State.sessionStartTs = null;
     UI.updateRing(0);
   },
-
 
   /**
    * Reseta o cronômetro e, se estiver em modo Pomodoro,
@@ -645,19 +668,26 @@ const Timeline = {
     const bar = document.createElement('div');
     bar.className = 'timeline-bar';
 
-    sessions.forEach(s=>{
-      const st = new Date(s.start);
-      const en = new Date(s.end);
-      const startMin = st.getHours()*60 + st.getMinutes() + st.getSeconds()/60;
-      const endMin   = en.getHours()*60 + en.getMinutes() + en.getSeconds()/60;
+  sessions.forEach(s=>{
+    const st = new Date(s.start);
+    const en = new Date(s.end);
+    const startMin = st.getHours()*60 + st.getMinutes() + st.getSeconds()/60;
+    const endMin   = en.getHours()*60 + en.getMinutes() + en.getSeconds()/60;
 
-      const seg = document.createElement('div');
-      seg.className = 'timeline-segment' + (s.type==='focus' ? '' : ' break');
-      seg.style.left  = (startMin/1440*100)+'%';
-      seg.style.width = ((endMin-startMin)/1440*100)+'%';
-      seg.title = `${st.toLocaleTimeString()} - ${en.toLocaleTimeString()} (${s.type})`;
-      bar.appendChild(seg);
-    });
+    const seg = document.createElement('div');
+    if (s.type === 'focus') {
+      seg.className = 'timeline-segment';
+    } else if (s.type === 'pause') {
+      seg.className = 'timeline-segment pause';
+    } else {
+      seg.className = 'timeline-segment break';
+    }
+    seg.style.left  = (startMin/1440*100)+'%';
+    seg.style.width = ((endMin-startMin)/1440*100)+'%';
+    seg.title = `${st.toLocaleTimeString()} - ${en.toLocaleTimeString()} (${s.type})`;
+    bar.appendChild(seg);
+  });
+
 
     // linha do agora
     const todayISO = Utils.todayISO();
