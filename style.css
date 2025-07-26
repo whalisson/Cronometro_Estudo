@@ -594,3 +594,78 @@ button:disabled {
 
 .timeline-segment.break { background: var(--info); }
 .timeline-segment.pause { background: var(--info); }
+
+/* --- ícone de menos na tabela --- */
+.minus-icon {
+  font-size: 0.9rem;
+  margin: 0 0.2rem;
+  color: #777;
+  cursor: pointer;
+  transition: color .2s;
+}
+.minus-icon:hover {
+  color: #555;
+}
+
+/* --- estilos do modal --- */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal.hidden {
+  display: none;
+}
+.modal-content {
+  background: var(--card);
+  padding: 20px;
+  border-radius: var(--r-md);
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  text-align: left;
+}
+.close-modal {
+  position: absolute;
+  top: 8px; right: 12px;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.sessions-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+}
+.session-info {
+  flex: 1;
+}
+.trash-icon {
+  font-size: 1.1rem;
+  color: var(--danger);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color .2s;
+}
+.trash-icon:hover {
+  color: darken(var(--danger), 10%);
+}
+
+
+/* 1) sessão de foco (estudo) */
+.timeline-segment.focus {
+  background: var(--succ);      /* verde sucesso */
+}
+
+/* 2) pausa curta */
+.timeline-segment.pause {
+  background: #6c757d;          /* cinza */
+}
+
+/* 3) descanso / intervalo longo */
+.timeline-segment.break {
+  background: var(--info);      /* azul */
+}

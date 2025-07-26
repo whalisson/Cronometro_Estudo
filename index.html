@@ -7,6 +7,7 @@
 
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="icon" type="image/png" href="static/images/cronom_red.png">
 </head>
 <body>
   <!-- Loader -->
@@ -128,6 +129,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Modal de Sessões de Foco -->
+  <div id="sessionsModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2>Sessões de Foco – <span id="modalDate"></span></h2>
+      <ul id="sessionsList"></ul>
+    </div>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>

@@ -93,6 +93,13 @@ const Store = {
   set theme(v){ localStorage.setItem('theme', v); }
 };
 
+// —– Persistir sessões apagadas —–
+Store.removedSessions = JSON.parse(localStorage.getItem('removedSessions')) || {};
+
+function saveRemoved() {
+  localStorage.setItem('removedSessions', JSON.stringify(Store.removedSessions));
+}
+
 /* ---------------------------
    3. Utils
 ---------------------------- */
@@ -465,6 +472,7 @@ const Day = {
     detail[key] = (detail[key] || 0) + seconds/3600;
     Store.studyDataDetail = detail;
     Points.add(seconds);
+    Recalc.all();
   },
 
   editToday(){
@@ -556,18 +564,27 @@ const Points = {
 ---------------------------- */
 const Recalc = {
   weeklyArray(){
-    const arr = [0,0,0,0,0,0,0];
-    const today  = new Date();
-    const ws     = Utils.startOfWeek(today);
-    const we     = new Date(ws); we.setDate(ws.getDate()+6);
+  const arr    = [0,0,0,0,0,0,0];
+  const ws     = Utils.startOfWeek(new Date());
+  const detail = Store.studyDataDetail;
+  const log    = Store.sessionLog;
 
-    const detail = Store.studyDataDetail;
-    for(const k in detail){
-      const d = Utils.parseDateKey(k);
-      if(d>=ws && d<=we){
-        arr[d.getDay()] += detail[k];
-      }
+  for(let i=0; i<7; i++){
+    const d    = new Date(ws);
+    d.setDate(ws.getDate() + i);
+    const key  = d.toISOString().slice(0,10);
+
+    if(detail[key] !== undefined){
+      // valor manual (edição ou subtração)
+      arr[i] = detail[key];
+    } else {
+      // soma todas as sessões de foco que ainda estão no sessionLog
+      arr[i] = (log[key] || [])
+        .filter(s => s.type === 'focus')
+        .reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
     }
+  }
+
     Store.studyDataArray = arr;
     return arr;
   },
@@ -597,11 +614,28 @@ const Recalc = {
 
 const Table = {
   update() {
-    const studyData = Recalc.weeklyArray();
-    const dias      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    const ws        = Utils.startOfWeek(new Date());
+    // 1) monta o array de horas por dia (normal + pomodoro, ou fallback em sessionLog)
+    const weekStart = Utils.startOfWeek(new Date());
+    const studyData = Array.from({ length: 7 }, (_, i) => {
+      const d   = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const key = d.toISOString().slice(0,10);
+      const detail = Store.studyDataDetail;
 
-    // 1) Monta o cabeçalho com os dias
+      const hNorm = detail[key]               || 0;
+      const hPomo = detail[`${key}_pomodoro`] || 0;
+      if (hNorm || hPomo) {
+        return hNorm + hPomo;
+      }
+      return (Store.sessionLog[key] || [])
+        .filter(s => s.type === 'focus')
+        .reduce((sum, s) => sum + (s.end - s.start)/3600000, 0);
+    });
+    // 2) persiste e deixa disponível para gráficos
+    Store.studyDataArray = studyData;
+
+    // 3) monta o cabeçalho
+    const dias      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     const headerRow = document.getElementById('studyHeader');
     headerRow.innerHTML = '';
     dias.forEach(d => {
@@ -610,22 +644,21 @@ const Table = {
       headerRow.appendChild(th);
     });
 
-    // 2) Monta a linha de valores (tempo + ícones)
+    // 4) monta os valores + ícones
     const valuesRow = document.getElementById('studyValues');
     valuesRow.innerHTML = '';
     studyData.forEach((decimal, i) => {
-      // dataKey para os callbacks
-      const dateObj = new Date(ws);
-      dateObj.setDate(ws.getDate() + i);
+      const dateObj = new Date(weekStart);
+      dateObj.setDate(weekStart.getDate() + i);
       const dateKey = dateObj.toISOString().slice(0,10);
 
       const td = document.createElement('td');
-      // formata em "HH:MM"
       const hhmm = Utils.formatDecimalToHHMM(decimal);
       td.innerHTML = `
         <span class="time-text">${hhmm}</span>
         <i class="fas fa-pen edit-icon" onclick="Day.editDate('${dateKey}')"></i>
         <i class="fas fa-plus add-icon" onclick="Day.addDate('${dateKey}')"></i>
+        <i class="fas fa-minus minus-icon" onclick="Day.showSessions('${dateKey}')"></i>
       `;
       valuesRow.appendChild(td);
     });
@@ -1007,3 +1040,82 @@ function init(){
   setTimeout(()=>document.getElementById('loader')?.remove(), 900);
 }
 init();
+
+
+// abre o modal com as sessões de foco do dia
+Day.showSessions = function(dateKey) {
+  const modal     = document.getElementById('sessionsModal');
+  const modalDate = document.getElementById('modalDate');
+  const list      = document.getElementById('sessionsList');
+
+  modalDate.textContent = dateKey;
+  list.innerHTML = '';
+
+  // ① só as sessões de foco ativas naquele dia
+  const sessions = (Store.sessionLog[dateKey] || [])
+    .filter(s => s.type === 'focus');
+
+  if (sessions.length === 0) {
+    list.innerHTML = '<li>Nenhuma sessão de foco registrada.</li>';
+  } else {
+    sessions.forEach(s => {
+      const li = document.createElement('li');
+      li.className = 'sessions-item';
+
+      // formatar horário e duração
+      const st = new Date(s.start), en = new Date(s.end);
+      const timeStr = st.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
+                      ' – ' +
+                      en.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const durationH = ((s.end - s.start) / 3600000).toFixed(2);
+
+      const span = document.createElement('span');
+      span.className = 'session-info';
+      span.textContent = `${timeStr} (${durationH} h)`;
+
+      const trash = document.createElement('i');
+      trash.className = 'fas fa-trash trash-icon';
+      trash.onclick = () => {
+        // ② remove a sessão exata do sessionLog
+        const log = Store.sessionLog;
+        log[dateKey] = (log[dateKey] || []).filter(item =>
+          !(item.type === 'focus'
+            && item.start === s.start
+            && item.end   === s.end)
+        );
+        Store.sessionLog = log;
+
+        // ③ remove qualquer override manual ou pomodoro daquele dia
+        const detail = Store.studyDataDetail;
+        delete detail[dateKey];
+        delete detail[`${dateKey}_pomodoro`];
+        Store.studyDataDetail = detail;
+
+        // ④ força recálculo de tabela, gráficos, timeline e totais
+        Recalc.all();
+
+        // ⑤ reexibe o modal com a lista atualizada
+        Day.showSessions(dateKey);
+      };
+
+      li.appendChild(span);
+      li.appendChild(trash);
+      list.appendChild(li);
+    });
+  }
+
+  modal.classList.remove('hidden');
+};
+
+// fecha o modal
+Day.hideSessions = function() {
+  document.getElementById('sessionsModal').classList.add('hidden');
+};
+
+// clicando no “×” ou fora do conteúdo
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('close-modal') ||
+      e.target.id === 'sessionsModal') {
+    Day.hideSessions();
+  }
+});
