@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estudo Tracker</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="icon" type="image/png" href="static/images/icons8-stopwatch-50.png">
+</head>
+<body>
+  <!-- Loader -->
+  <div id="loader" class="loader">Carregando...</div>
+
+  <!-- Botão tema -->
+  <button id="themeToggle" class="theme-toggle" aria-label="Alternar tema">
+    <i class="fas fa-moon"></i>
+  </button>
+
+  <!-- Topbar / Navegação -->
+  <header class="topbar">
+    <!-- <h1><i class="fas fa-book-reader"></i></h1> -->
+    <nav class="tabs-nav">
+      <button data-tab="timer"   class="nav-btn active" aria-label="Timer"><i class="fas fa-clock"></i></button>
+      <button data-tab="metrics" class="nav-btn" aria-label="Métricas"><i class="fas fa-chart-bar"></i></button>
+      <button data-tab="notes"    class="nav-btn" aria-label="Notas"><i class="fas fa-sticky-note"></i></button>
+      <button data-tab="settings" class="nav-btn" aria-label="Configurações"><i class="fas fa-gear"></i></button>
+      <span class="nav-indicator"></span>
+    </nav>
+  </header>
+
+  <!-- Barra de progresso semanal -->
+  <div class="weekly-progress">
+    <div class="weekly-progress-fill" id="weeklyFill"></div>
+  </div>
+
+  <main>
+    <!-- TAB TIMER -->
+    <section id="tab-timer" class="tab active" aria-labelledby="Timer">
+      <div class="timer-wrapper">
+        <div class="timer-ring">
+          <i class="fas fa-stopwatch timer-icon"></i>
+          <div class="timer" id="display">00:00:00</div>
+          <!-- Pizza progress indicator -->
+          <div class="pizza"></div>
+        </div>
+      </div>
+
+      
+      <div class="timer-controls">
+        <!-- 2) Botão de play/pause: sem texto, só ícone -->
+        <button id="startBtn" class="icon-btn">
+          <i class="fas fa-play"></i>
+        </button>
+        <!-- 3) Botão de reset -->
+        <button id="resetBtn" class="icon-btn">
+          <i class="fas fa-redo"></i>
+        </button>
+      </div>
+
+      <!-- Pomodoro -->
+      <div class="pomodoro-config">
+        <label for="pomodoroFocus"><i class="fas fa-bullseye"></i></label>
+        <input type="number" id="pomodoroFocus" min="1" step="1" value="25" />
+        <label for="pomodoroBreak"><i class="fas fa-coffee"></i></label>
+        <input type="number" id="pomodoroBreak" min="1" step="1" value="5" />
+      </div>
+      <div class="pomodoro-buttons">
+        <button id="btnStartPomodoro"><i class="fas fa-play-circle"></i>Pomodoro</button>
+      </div>
+
+      <div class="streak-box">Streak: <span id="streakCounter">0 🔥</span></div>
+
+      <h2>Timeline do Dia</h2>
+      <div id="timelineContainer"></div>
+    </section>
+
+    <!-- TAB MÉTRICAS -->
+    <section id="tab-metrics" class="tab" aria-labelledby="Métricas">
+      <div class="card">
+        <h2>Horas Estudadas na Semana</h2>
+        <div class="meta-container">
+          <label for="metaHoras">Meta semanal (horas):</label>
+          <input type="number" id="metaHoras" min="0" step="0.5" value="10" />
+        </div>
+        <div id="totalSemana" class="total-semana-box">Total da semana: 0:00</div>
+          <table id="studyTable">
+            <thead>
+              <tr id="studyHeader"><!-- os dias vão aqui --></tr>
+            </thead>
+            <tbody>
+              <tr id="studyValues"><!-- tempos + ícones vão aqui --></tr>
+            </tbody>
+          </table>
+      </div>
+
+      <div class="charts card">
+        <h2>Gráfico Acumulado Semanal</h2>
+        <canvas id="chartAcumuladoSemanal"></canvas>
+
+        <h2>Histórico de Metas Semanais</h2>
+        <canvas id="chartMetaHistory"></canvas>
+
+        <h2>Heatmap do Mês</h2>
+        <div id="heatmapContainer"></div>
+      </div>
+    </section>
+
+    <!-- TAB CONFIGURAÇÕES -->
+    <section id="tab-settings" class="tab" aria-labelledby="Configurações">
+      <div class="card">
+        <h2>Exportar / Importar Dados</h2>
+        <button id="btnExport"><i class="fas fa-file-export"></i> Exportar JSON</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button id="btnImport"><i class="fas fa-file-import"></i> Importar JSON</button>
+      </div>
+
+      <div class="card">
+        <h2>Resetar Tudo</h2>
+        <button id="btnHardReset" class="danger"><i class="fas fa-bomb"></i> Limpar LocalStorage</button>
+      </div>
+    </section>
+
+    <!-- TAB NOTAS -->
+    <section id="tab-notes" class="tab" aria-labelledby="Notas">
+      <div class="card notes-card">
+        <h2><i class="fas fa-sticky-note"></i> Minhas Notas</h2>
+        <textarea id="notesArea" placeholder="Escreva suas notas aqui..."></textarea>
+        <div class="buttons">
+          <button id="clearNotesBtn"><i class="fas fa-trash-alt"></i> Limpar Notas</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Modal de Sessões de Foco -->
+  <div id="sessionsModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2>Sessões de Foco – <span id="modalDate"></span></h2>
+      <ul id="sessionsList"></ul>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

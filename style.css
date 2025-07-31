@@ -1,0 +1,711 @@
+/* =========================
+   VARIÁVEIS & RESET
+   ========================= */
+:root{
+  --label-w:100px;
+
+  --prim:#007bff; --succ:#28a745; --warn:#ffc107; --danger:#dc3545; --info:#17a2b8;
+  --bg1:#f5f7fa; --bg2:#c3cfe2; --card:#ffffff;
+  --text:#333; --text-dark:#222;
+
+  --r-md:12px; --r-lg:16px;
+  --sh-sm:0 2px 6px rgba(0,0,0,.1);
+  --sh-md:0 4px 10px rgba(0,0,0,.1);
+
+  --yellow:#ffd84d;      /* círculo base */
+  --yellow-soft:#fffbe6; /* preenchimento interno */
+  --orange:#fda839;      /* progresso */
+
+  --font:"Segoe UI","Roboto","Helvetica Neue",Arial,sans-serif;
+}
+:root.dark{
+  --bg1:#1f1f23; --bg2:#2b2b31; --card:#2a2a31;
+  --text:#ddd; --text-dark:#fff;
+
+  --prim:#4dabf7; --succ:#51cf66; --info:#15aabf; --warn:#fcc419; --danger:#ff6b6b;
+
+  --yellow:#9c7a00;
+  --yellow-soft:#4a3f15;
+  --orange:#ff9d4d;
+
+  --sh-sm:0 2px 6px rgba(0,0,0,.4);
+  --sh-md:0 4px 10px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:var(--font);
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  color:var(--text);
+  text-align:center;
+}
+h1,h2{margin:20px 0;color:var(--text-dark);text-shadow:1px 1px 1px #0002;}
+
+/* =========================
+   LOADER
+   ========================= */
+.loader{
+  position:fixed;inset:0;background:var(--bg1);
+  display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;
+  font-size:22px;color:var(--prim);z-index:9999;
+  animation:fadeOut .4s .8s forwards;
+}
+.loader::after{
+  content:"";
+  width:36px;height:36px;border:4px solid var(--prim);border-bottom-color:transparent;
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes fadeOut{to{opacity:0;visibility:hidden}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* =========================
+   TOPBAR / NAV
+   ========================= */
+.topbar{
+  position:sticky;top:0;background:var(--card);
+  padding:14px 16px 10px;box-shadow:var(--sh-sm);
+  display:flex;flex-direction:column;align-items:center;gap:10px;z-index:10;
+}
+.topbar h1{
+  margin:0;font-size:22px;display:flex;gap:8px;align-items:center;
+}
+.tabs-nav{
+  position:relative;display:flex;gap:32px;justify-content:center;
+}
+.nav-btn{
+  background:transparent;box-shadow:none;color:var(--text-dark);
+  font-size:24px;line-height:1;position:relative;
+}
+.nav-btn.active{color:var(--prim);}
+.nav-indicator{
+  position:absolute;bottom:-6px;height:3px;width:28px;background:var(--prim);
+  border-radius:3px;left:0;transition:transform .25s,width .25s;
+}
+
+/* =========================
+   TABS
+   ========================= */
+.tab{display:none;animation:fade .25s;}
+.tab.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* =========================
+   CARDS (GLASS)
+   ========================= */
+.card,#timelineContainer,.charts,.timer-box{
+  background:rgba(255,255,255,.45);
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+  border:1px solid rgba(255,255,255,.3);
+}
+:root.dark .card,
+:root.dark #timelineContainer,
+:root.dark .charts{
+  background:rgba(42,42,49,.45);
+  border:1px solid rgba(255,255,255,.08);
+}
+.card{
+  padding:20px;border-radius:var(--r-md);
+  box-shadow:var(--sh-md);
+  width:90%;max-width:1000px;
+  margin:20px auto;text-align:center;
+}
+
+/* =========================
+   WEEKLY PROGRESS BAR
+   ========================= */
+.weekly-progress{
+  width:90%;max-width:600px;height:10px;background:#e9ecef;border-radius:10px;
+  margin:10px auto;position:relative;overflow:hidden;
+}
+:root.dark .weekly-progress{background:#3a3a40;}
+.weekly-progress-fill{
+  height:100%;width:0;background:var(--prim);
+  transition:width .4s ease;
+}
+
+/* =========================
+   TIMER (CÍRCULO AMARELO + PROGRESSO LARANJA)
+   ========================= */
+.timer-wrapper{
+  display:flex;justify-content:center;align-items:center;
+  margin:30px 0 10px;
+}
+.timer-ring{
+  position:relative;
+  width:240px;               /* maior para evitar corte */
+  height:240px;
+  display:flex;justify-content:center;align-items:center;
+  overflow:visible;
+}
+.timer-ring::before{
+  content:"";
+  position:absolute;
+  width:188px;height:188px;  /* interno */
+  background:var(--yellow-soft);
+  border-radius:50%;
+  z-index:1;
+  box-shadow:inset 0 0 8px #0001;
+}
+.timer-icon{
+  position:absolute;
+  top:54px;                   /* descido */
+  left:50%;
+  transform:translate(-50%,0);
+  font-size:26px;
+  color:var(--yellow);
+  text-shadow:0 1px 2px #0002;
+  z-index:3;
+}
+.timer{
+  position:relative;z-index:2;
+  font-size:44px;font-weight:700;color:var(--text-dark);
+}
+:root.dark .timer{color:#eee;}
+.ring-svg{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  transform:rotate(-90deg);
+  overflow:visible;
+}
+/* r = 44 --> total ~ 276.4 */
+.ring-bg{
+  fill:none;stroke:var(--yellow);stroke-width:14;
+}
+.ring-fg{
+  fill:none;stroke:var(--orange);stroke-width:14;stroke-linecap:round;
+  stroke-dasharray:276.4;   /* atualizar também no JS */
+  stroke-dashoffset:276.4;
+  transition:stroke-dashoffset .3s linear;
+}
+
+/* =========================
+   BUTTONS
+   ========================= */
+
+button {
+  background: var(--card);
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 10px 20px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  transition: background-color .3s, transform .2s, box-shadow .3s;
+}
+button:hover {
+  box-shadow: 2px 2px 8px rgba(0,0,0,.3);
+}
+button:active {
+  transform: scale(.97);
+}
+
+/* 2) Só timer-controls (play/reset) e os .buttons antigos ficam verdes */
+.timer-controls .icon-btn,
+.buttons button,
+.pomodoro-buttons button,
+.edit-buttons button {
+  background: var(--succ);
+  color: #fff;
+}
+.timer-controls .icon-btn:hover,
+.buttons button:hover,
+.pomodoro-buttons button:hover,
+.edit-buttons button:hover {
+  background: #218838;
+}
+.timer-controls .icon-btn:active,
+.buttons button:active,
+.pomodoro-buttons button:active,
+.edit-buttons button:active {
+  background: #1e7e34;
+}
+
+/* 3) o botão de perigo continua vermelho */
+button.danger {
+  background: var(--danger);
+}
+
+.buttons button{background:var(--succ);margin:8px;}
+.buttons button:hover{background:#218838;}
+:root.dark .buttons button:hover{background:#37b24d;}
+
+.pomodoro-config{
+  display:flex;justify-content:center;align-items:center;
+  gap:12px;flex-wrap:wrap;margin:15px auto;
+}
+.pomodoro-config label{font-size:16px;color:#555;}
+:root.dark .pomodoro-config label{color:#ccc;}
+.pomodoro-config input{
+  width:60px;padding:6px 8px;font-size:16px;border:1px solid #ccc;
+  border-radius:6px;text-align:center;background:var(--card);color:var(--text);
+}
+
+.pomodoro-buttons{margin:15px;}
+.pomodoro-buttons button{background:var(--info);margin:8px;}
+.pomodoro-buttons button:hover{background:#138496;}
+
+.edit-buttons{margin-top:10px;}
+.edit-buttons button{margin:8px;background:var(--warn);color:#212529;}
+.edit-buttons button:hover{background:#e0a800;}
+.edit-buttons button:last-child{background:var(--danger);color:#fff;}
+.edit-buttons button:last-child:hover{background:#c82333;}
+
+/* =========================
+   STREAK
+   ========================= */
+.streak-box{
+  background:#ffeaa7;color:#6c4400;padding:8px 16px;border-radius:20px;
+  display:inline-block;margin:10px auto;font-weight:600;
+}
+:root.dark .streak-box{background:#665323;color:#ffd28a;}
+
+/* =========================
+   TABLE / META
+   ========================= */
+table{
+  width:70%;margin:20px auto;border-collapse:collapse;
+  background:var(--card);box-shadow:var(--sh-sm);
+  border-radius:var(--r-md);overflow:hidden;
+}
+th,td{padding:10px;border:1px solid #ddd;}
+:root.dark th,:root.dark td{border-color:#444;}
+th{background:var(--prim);color:#fff;}
+
+.meta-container{margin-top:10px;font-size:16px;}
+#metaHoras{
+  width:80px;padding:6px 10px;font-size:16px;
+  border:1px solid #ccc;border-radius:6px;margin-left:8px;
+  background:var(--card);color:var(--text);
+}
+.total-semana-box{
+  display:inline-block;padding:12px 20px;margin:15px auto;
+  border-radius:var(--r-md);font-size:20px;font-weight:bold;
+  box-shadow:2px 2px 8px rgba(0,0,0,.1);
+  transition:background-color .3s,color .3s;
+  border-left:6px solid var(--prim);
+}
+.meta-baixa{background:#f8d7da;color:#721c24;border-left-color:var(--danger);}
+.meta-media-baixa{background:#fff3cd;color:#856404;border-left-color:var(--warn);}
+.meta-media-alta{background:#d1ecf1;color:#0c5460;border-left-color:#17a2b8;}
+.meta-quase{background:#c3e6cb;color:#155724;border-left-color:var(--succ);}
+.meta-completa{background:#1e7e34;color:#fff;border-left-color:#155724;}
+
+/* =========================
+   CHARTS & HEATMAP
+   ========================= */
+.charts{
+  width:90%;max-width:1000px;margin:40px auto;background:var(--card);
+  padding:20px;border-radius:var(--r-md);box-shadow:var(--sh-md);
+}
+canvas{margin-top:20px;max-width:100%;}
+
+#heatmapContainer{
+  display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:24px;
+  gap:2px;width:90%;max-width:500px;margin:20px auto;
+}
+.heatmap-cell{font-size:.75rem;text-align:center;border-radius:4px;}
+.level-0{background:#ebedf0;} .level-1{background:#c6e48b;}
+.level-2{background:#7bc96f;} .level-3{background:#239a3b;}
+.level-4{background:#196127;}
+:root.dark .level-0{background:#555;}
+:root.dark .level-1{background:#4d7f2a;}
+:root.dark .level-2{background:#2e7d32;}
+:root.dark .level-3{background:#1b5e20;}
+:root.dark .level-4{background:#0b3d0f;}
+
+/* =========================
+   TIMELINE
+   ========================= */
+#timelineContainer{
+  width:90%;max-width:1000px;margin:20px auto;background:var(--card);
+  padding:24px 16px 32px;border-radius:var(--r-md);
+  box-shadow:var(--sh-md);text-align:left;font-size:14px;
+}
+.timeline-row{
+  display:flex;align-items:flex-start;margin:18px 0;position:relative;
+}
+.timeline-label{
+  width:var(--label-w);flex:0 0 var(--label-w);
+  text-align:right;margin-right:24px;color:#555;padding-top:14px;
+}
+:root.dark .timeline-label{color:#ccc;}
+.timeline-track{position:relative;flex:1 1 auto;height:32px;}
+.timeline-scale{
+  position:absolute;top:0;left:0;right:0;height:12px;
+  font-size:10px;color:#666;
+}
+:root.dark .timeline-scale{color:#aaa;}
+.timeline-tick{
+  position:absolute;top:0;transform:translateX(-50%);
+  white-space:nowrap;pointer-events:none;
+}
+.timeline-bar{
+  position:absolute;left:0;right:0;bottom:0;height:16px;
+  background:#e9ecef;border-radius:9px;overflow:hidden;
+}
+:root.dark .timeline-bar{background:#3a3a40;}
+.timeline-segment{
+  position:absolute;top:0;bottom:0;background:var(--succ);
+  opacity:.85;border-radius:9px;
+}
+.timeline-segment.break{background:var(--info);}
+.timeline-now{
+  position:absolute;top: 16px;;bottom:0;width:2px;background:var(--danger);
+  box-shadow:0 0 4px var(--danger);
+}
+
+/* =========================
+   EMPTY STATE
+   ========================= */
+.empty-msg{color:#777;font-style:italic;margin:10px 0;}
+:root.dark .empty-msg{color:#aaa;}
+
+/* =========================
+   THEME TOGGLE
+   ========================= */
+.theme-toggle{
+  position:fixed;right:16px;bottom:16px;background:var(--prim);
+  border-radius:50%;width:48px;height:48px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--sh-md);z-index:999;
+}
+.theme-toggle i{pointer-events:none;}
+
+/* =========================
+   UTILIDADES
+   ========================= */
+.hidden{display:none!important;}
+.wiggle{animation:wiggle .3s ease-in-out 2;}
+@keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(1deg)}75%{transform:rotate(-1deg)}}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width:600px){
+  :root{--label-w:70px;}
+  table{width:95%;}
+  .timeline-label{font-size:12px;}
+  .timeline-tick{font-size:9px;}
+  .timer{font-size:36px;}
+  .topbar h1{font-size:18px;}
+  .nav-btn{font-size:20px;}
+}
+
+/* =========================
+   NOTAS
+   ========================= */
+.notes-card textarea#notesArea {
+  width: 100%;
+  height: 50vh;
+  padding: 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.1);
+  background: var(--card);
+  color: var(--text);
+  transition: border-color .3s;
+}
+.notes-card textarea#notesArea:focus {
+  border-color: var(--prim);
+  outline: none;
+}
+.notes-card .buttons {
+  margin-top: 12px;
+}
+.notes-card .buttons button {
+  background-color: var(--danger);
+  color: #fff;
+}
+
+/* Botões de Ação na Tabela */
+.btn-edit {
+  background: var(--warn);
+}
+.btn-edit:hover {
+  background: var(--warn-hover, #e0a800);
+}
+
+.btn-add {
+  background: var(--succ);
+}
+.btn-add:hover {
+  background: var(--succ-hover, #218838);
+}
+
+/* 1. Timer Ring mais “macio” */
+.timer-ring {
+  position: relative;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--yellow-soft);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: transform 0.4s ease;
+}
+.timer-ring:hover {
+  transform: scale(1.03);
+}
+
+/* 2. Pizza progress com easing suave */
+.pizza {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  transition: background 0.8s ease-out;
+}
+
+/* 3. Ícone com micro-animação */
+.timer-icon {
+  font-size: 1.4rem;
+  color: var(--orange);
+  animation: pulse 3s infinite ease-in-out;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1);     opacity: 1; }
+  50%     { transform: scale(1.15);  opacity: 0.8; }
+}
+
+.timer-ring .timer-icon {
+  position: absolute;
+  top: 20%;
+  left: 45.5%;
+  transform: translate(-50%, -50%);
+  z-index: 2;    /* acima da pizza */
+  pointer-events: none; /* se quiser que cliques passem por ele */
+}
+
+.timer {
+  font-size: 2.7rem;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: color 0.3s ease;
+}
+
+button {
+  padding: 0.6em 1.2em;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* 6. Cores dos botões de ação */
+.btn-edit {
+  background: var(--warn);
+  color: #fff;
+}
+.btn-edit:hover {
+  background: var(--warn-hover, #e0a800);
+}
+.btn-add {
+  background: var(--succ);
+  color: #fff;
+}
+.btn-add:hover {
+  background: var(--succ-hover, #218838);
+}
+
+/* Layout da célula com tempo e botões */
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.time-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.action-buttons button {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  box-shadow: var(--sh-sm);
+}
+
+/* Botões menores na tabela */
+.btn-edit { background: var(--warn); color: #fff; }
+.btn-edit:hover { background: #e0a800; }
+.btn-add { background: var(--succ); color: #fff; }
+.btn-add:hover { background: #218838; }
+
+
+
+#btnExport,
+#btnImport {
+  background: #4a4a4a; /* cinza escuro */
+  color: #fff;
+}
+#btnExport:hover,
+#btnImport:hover {
+  background: #333; /* ainda mais escuro no hover */
+}
+
+/* aplica transição suave a quase tudo */
+* {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+
+/* botões com hover “lift” e sombra leve */
+button {
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+/* estrutura básica */
+#studyTable {
+  width: 90%;
+  max-width: 800px;
+  margin: 1.5rem auto;
+  table-layout: fixed;
+  text-align: center;
+  border-collapse: collapse;
+}
+#studyTable th,
+#studyTable td {
+  padding: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Tempo e botões juntos */
+.time-text {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.edit-icon,
+.add-icon {
+  font-size: 0.9rem;
+  margin: 0 0.2rem;
+  color: #777;
+  cursor: pointer;
+  transition: color .2s;
+}
+.edit-icon:hover,
+.add-icon:hover {
+  color: #555;
+}
+
+/* separador leve entre header e body */
+#studyTable thead th {
+  background: var(--prim);
+  color: #fff;
+  border-bottom: 2px solid darken(var(--prim),10%);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.timeline-segment.pause {
+  background: #6c757d; /* cinza */
+}
+
+.timeline-segment.break { background: var(--info); }
+.timeline-segment.pause { background: var(--info); }
+
+/* --- ícone de menos na tabela --- */
+.minus-icon {
+  font-size: 0.9rem;
+  margin: 0 0.2rem;
+  color: #777;
+  cursor: pointer;
+  transition: color .2s;
+}
+.minus-icon:hover {
+  color: #555;
+}
+
+/* --- estilos do modal --- */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal.hidden {
+  display: none;
+}
+.modal-content {
+  background: var(--card);
+  padding: 20px;
+  border-radius: var(--r-md);
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  text-align: left;
+}
+.close-modal {
+  position: absolute;
+  top: 8px; right: 12px;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.sessions-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+}
+.session-info {
+  flex: 1;
+}
+.trash-icon {
+  font-size: 1.1rem;
+  color: var(--danger);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color .2s;
+}
+.trash-icon:hover {
+  color: darken(var(--danger), 10%);
+}
+
+
+/* 1) sessão de foco (estudo) */
+.timeline-segment.focus {
+  background: var(--succ);      /* verde sucesso */
+}
+
+/* 2) pausa curta */
+.timeline-segment.pause {
+  background: #6c757d;          /* cinza */
+}
+
+/* 3) descanso / intervalo longo */
+.timeline-segment.break {
+  background: var(--info);      /* azul */
+}
+
