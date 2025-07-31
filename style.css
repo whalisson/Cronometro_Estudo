@@ -62,26 +62,53 @@ h1,h2{margin:20px 0;color:var(--text-dark);text-shadow:1px 1px 1px #0002;}
 /* =========================
    TOPBAR / NAV
    ========================= */
-.topbar{
-  position:sticky;top:0;background:var(--card);
-  padding:14px 16px 10px;box-shadow:var(--sh-sm);
-  display:flex;flex-direction:column;align-items:center;gap:10px;z-index:10;
+/* =========================
+   TOPBAR / NAV
+   ========================= */
+.topbar {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  padding: 4px 16px;       /* menos espaço vertical */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;                /* reduz o gap entre linhas */
+  z-index: 10;
 }
-.topbar h1{
-  margin:0;font-size:22px;display:flex;gap:8px;align-items:center;
+
+.topbar h1 {
+  margin: 0;
+  font-size: 16px;         /* título menor */
 }
-.tabs-nav{
-  position:relative;display:flex;gap:32px;justify-content:center;
+
+.tabs-nav {
+  display: flex;
+  gap: 16px;               /* ícones mais próximos */
+  justify-content: center;
 }
-.nav-btn{
-  background:transparent;box-shadow:none;color:var(--text-dark);
-  font-size:24px;line-height:1;position:relative;
+
+.nav-btn {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-dark);
+  font-size: 18px;         /* ícone menor */
+  line-height: 1;
+  padding: 4px;            /* área clicável reduzida */
+  transition: transform .2s ease;
 }
-.nav-btn.active{color:var(--prim);}
-.nav-indicator{
-  position:absolute;bottom:-6px;height:3px;width:28px;background:var(--prim);
-  border-radius:3px;left:0;transition:transform .25s,width .25s;
+
+.nav-btn.active {
+  color: var(--text);
+  transform: scale(1.1);    /* destaque mais sutil */
 }
+
+.nav-indicator {
+  bottom: -3px;            /* ajusta posição */
+  height: 1px;             /* linha ainda mais fina */
+  width: 16px;             /* indicador menor */
+}
+
 
 /* =========================
    TABS
@@ -289,7 +316,7 @@ th{background:var(--prim);color:#fff;}
   border-radius:var(--r-md);font-size:20px;font-weight:bold;
   box-shadow:2px 2px 8px rgba(0,0,0,.1);
   transition:background-color .3s,color .3s;
-  border-left:6px solid var(--prim);
+  border-left:6px solid var(--bg2);
 }
 .meta-baixa{background:#f8d7da;color:#721c24;border-left-color:var(--danger);}
 .meta-media-baixa{background:#fff3cd;color:#856404;border-left-color:var(--warn);}
@@ -617,9 +644,11 @@ button:hover {
 
 /* separador leve entre header e body */
 #studyTable thead th {
-  background: var(--prim);
+  background: var(--danger); /* vermelho */
   color: #fff;
-  border-bottom: 2px solid darken(var(--prim),10%);
+}
+:root.dark th {
+  background: var(--danger-hover, #c82333); /* versão escura, se usar tema dark */
 }
 
 button:disabled {
