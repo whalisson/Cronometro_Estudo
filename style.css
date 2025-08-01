@@ -738,3 +738,15 @@ button:disabled {
   background: var(--info);      /* azul */
 }
 
+#aiTipsBtn {
+  background: var(--info);
+  color: #fff;
+  margin-top: 1rem;
+}
+#aiTipsOutput {
+  padding: 1rem;
+  background: var(--card);
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
