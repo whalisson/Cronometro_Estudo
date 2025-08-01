@@ -7,6 +7,8 @@
 ---------------------------- */
 const RING_TOTAL = 276.4; // 2π * 44 (raio do SVG)
 const ONE_DAY_MS = 86_400_000;
+// ── Variável global para o scatter ──
+let scatterChart = null;
 
 const pomodoroConfig = {
   focusDuration: 25 * 60,
@@ -323,14 +325,16 @@ window.resetTimer = () => {
    6. Sessions (Timeline logs)
 ---------------------------- */
 const Sessions = {
-  save(startTs, endTs, type='normal'){
-    const key = new Date(startTs).toISOString().slice(0,10);
+  save(startTs, endTs, type = 'normal') {
+    const d   = new Date(startTs);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const log = Store.sessionLog;
     log[key] = log[key] || [];
     log[key].push({ start: startTs, end: endTs, type });
     Store.sessionLog = log;
   }
 };
+
 
 /* ---------------------------
    7. Meta semanal & Progress
@@ -601,6 +605,9 @@ const Recalc = {
     Charts.update();
     Timeline.render();
     Recalc.updateWeeklyProgress();
+    updateScatterChart();   // ← adiciona aqui
+    updateInsights();       // ← e aqui
+
   },
   updateWeeklyProgress() {
     const arr = Store.studyDataArray;
@@ -680,7 +687,6 @@ const Timeline = {
     if (!DOM.timelineContainer) return;
     DOM.timelineContainer.innerHTML = '';
 
-    // chave do dia em horário local (YYYY-MM-DD)
     const key = [
       date.getFullYear(),
       String(date.getMonth() + 1).padStart(2, '0'),
@@ -859,6 +865,82 @@ const Charts = {
     if(Charts._charts[id]){ Charts._charts[id].destroy(); delete Charts._charts[id]; }
   }
 };
+// ── 10.X. Scatter & Insights ─────────────────────────
+
+// retorna um array de pontos {x: horaDecimal, y: duraçãoEmHoras}
+function getScatterData() {
+  const points = [];
+  Object.values(Store.sessionLog).forEach(sessions => {
+    sessions
+      .filter(s => s.type !== 'pause' && s.type !== 'break')
+      .forEach(s => {
+        const st = new Date(s.start);
+        const en = new Date(s.end);
+        const x = st.getHours() + st.getMinutes() / 60;
+        const y = (en - st) / 3600000;
+        points.push({ x, y });
+      });
+  });
+  return points;
+}
+
+// desenha ou atualiza o gráfico de dispersão no <canvas id="chartScatter">
+function updateScatterChart() {
+  const canvas = document.getElementById('chartScatter');
+  if (!canvas) return;
+  const ctx  = canvas.getContext('2d');
+  const data = getScatterData();
+  if (scatterChart) {
+    scatterChart.data.datasets[0].data = data;
+    scatterChart.update();
+  } else {
+    scatterChart = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label:   'Hora × Duração (h)',
+          data:    data,
+          backgroundColor: 'var(--succ)'
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Hora do dia' }, min: 0, max: 24 },
+          y: { title: { display: true, text: 'Duração (h)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+// calcula e exibe o insight no <div id="insightsBox">
+function updateInsights() {
+  const data = getScatterData();
+  const box  = document.getElementById('insightsBox');
+  if (!box) return;
+  if (!data.length) {
+    box.textContent = 'Ainda não há sessões para análise.';
+    return;
+  }
+  // agrupa sessões por hora inteira de início
+  const buckets = {};
+  data.forEach(pt => {
+    const h = Math.floor(pt.x);
+    buckets[h] = buckets[h] || [];
+    buckets[h].push(pt.y);
+  });
+  // calcula média de duração por hora
+  const stats = Object.entries(buckets).map(([h, arr]) => {
+    const avg = arr.reduce((sum, v) => sum + v, 0) / arr.length;
+    return { hour: Number(h), avg };
+  });
+  // encontra o horário de maior média
+  stats.sort((a, b) => b.avg - a.avg);
+  const best = stats[0];
+  box.innerHTML = `
+    <p>Você rende melhor às <strong>${best.hour}h</strong> (média ${best.avg.toFixed(2)} h).</p>
+  `;
+}
 
 /* ---------------------------
    11. Export / Import / Reset
