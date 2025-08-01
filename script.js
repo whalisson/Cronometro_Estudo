@@ -33,6 +33,31 @@ const State = {
   hasPaused:     false
 };
 
+// —– Persistir estado do timer —–
+function saveTimerState() {
+  const s = {
+    running:       State.running,
+    startTime:     State.startTime,
+    elapsedBefore: State.elapsedBefore,
+    sessionStartTs: State.sessionStartTs,
+    hasPaused:     State.hasPaused,
+    pauseStartTs:  State.pauseStartTs
+  };
+  localStorage.setItem('timerState', JSON.stringify(s));
+}
+
+function loadTimerState() {
+  const s = JSON.parse(localStorage.getItem('timerState') || 'null');
+  if (!s) return;
+  State.running       = s.running;
+  State.startTime     = s.startTime;
+  State.elapsedBefore = s.elapsedBefore;
+  State.sessionStartTs= s.sessionStartTs;
+  State.hasPaused     = s.hasPaused;
+  State.pauseStartTs  = s.pauseStartTs;
+}
+
+
 /* ---------------------------
    1. DOM Cache
 ---------------------------- */
@@ -233,6 +258,7 @@ const Timer = {
     }
 
     UI.setRunButton(true);
+    saveTimerState();
     State.timerInterval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - State.startTime) / 1000)
                     + State.elapsedBefore;
@@ -247,6 +273,7 @@ const Timer = {
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
     UI.setRunButton(false);
+    saveTimerState();
 
     const now     = Date.now();
     const elapsed = Math.floor((now - State.startTime) / 1000);
@@ -302,6 +329,7 @@ const Timer = {
     State.hasPaused     = false;            // ⬅️ limpa a flag
 
     DOM.display.textContent = "00:00:00";
+    saveTimerState();
     UI.setRunButton(false);
     UI.updateRing(0);
     // reabilita o botão de Pomodoro após o reset
@@ -1124,6 +1152,27 @@ function bindEvents(){
 function init(){
   if("Notification" in window && Notification.permission !== "granted") {
     Notification.requestPermission();
+  }
+  loadTimerState();
+
+  // ② se estava rodando, retoma
+  if (State.running) {
+    const now     = Date.now();
+    // calcula tempo total decorrido
+    const elapsed = Math.floor((now - State.startTime) / 1000) + State.elapsedBefore;
+    // atualiza State para evitar drift
+    State.startTime     = now;
+    State.elapsedBefore = elapsed;
+    // ajusta botão e display
+    UI.setRunButton(true);
+    DOM.display.textContent = Utils.formatTime(elapsed);
+    UI.updateRing(Math.min(elapsed / 3600, 1));
+    // reativa intervalo de atualização
+    State.timerInterval = setInterval(() => {
+      const e = Math.floor((Date.now() - State.startTime) / 1000) + State.elapsedBefore;
+      DOM.display.textContent = Utils.formatTime(e);
+      UI.updateRing(Math.min(e / 3600, 1));
+    }, 200);
   }
 
   Meta.load();
