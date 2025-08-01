@@ -273,7 +273,6 @@ const Timer = {
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
     UI.setRunButton(false);
-    saveTimerState();
 
     const now     = Date.now();
     const elapsed = Math.floor((now - State.startTime) / 1000);
@@ -286,6 +285,7 @@ const Timer = {
       State.hasPaused = true;
     }
 
+    saveTimerState();
     Recalc.all();
     State.sessionStartTs = null;            // fechar sessão atual
     UI.updateRing(0);
@@ -329,7 +329,6 @@ const Timer = {
     State.hasPaused     = false;            // ⬅️ limpa a flag
 
     DOM.display.textContent = "00:00:00";
-    saveTimerState();
     UI.setRunButton(false);
     UI.updateRing(0);
     // reabilita o botão de Pomodoro após o reset
@@ -337,6 +336,7 @@ const Timer = {
       DOM.btnStartPomodoro.disabled = false;
       Pomodoro.updateBtn();
     }
+    saveTimerState();
   }
 };
 
@@ -1155,19 +1155,15 @@ function init(){
   }
   loadTimerState();
 
-  // ② se estava rodando, retoma
-  if (State.running) {
-    const now     = Date.now();
-    // calcula tempo total decorrido
-    const elapsed = Math.floor((now - State.startTime) / 1000) + State.elapsedBefore;
-    // atualiza State para evitar drift
-    State.startTime     = now;
-    State.elapsedBefore = elapsed;
-    // ajusta botão e display
-    UI.setRunButton(true);
-    DOM.display.textContent = Utils.formatTime(elapsed);
-    UI.updateRing(Math.min(elapsed / 3600, 1));
-    // reativa intervalo de atualização
+// 3) Atualiza display e anel com o elapsedBefore (mesmo parado)
+  const elapsed0 = State.elapsedBefore || 0;
+  DOM.display.textContent = Utils.formatTime(elapsed0);
+  UI.updateRing(Math.min(elapsed0 / 3600, 1));
+  // Ajusta o ícone play↔pause
+  UI.setRunButton(State.running);
+
+  // 4) Se estava rodando, retoma o setInterval sem zerar o elapsed
+  if (State.running && State.startTime) {
     State.timerInterval = setInterval(() => {
       const e = Math.floor((Date.now() - State.startTime) / 1000) + State.elapsedBefore;
       DOM.display.textContent = Utils.formatTime(e);
