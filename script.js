@@ -1207,16 +1207,16 @@ Day.showSessions = function(dateKey) {
       const li = document.createElement('li');
       li.className = 'sessions-item';
 
-      // formatar horário e duração
+      // formata horário e duração
       const st = new Date(s.start), en = new Date(s.end);
       const timeStr = st.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) +
                       ' – ' +
                       en.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      const durationH = ((s.end - s.start) / 3600000).toFixed(2);
+      const durationH = (s.end - s.start) / 3600000;
 
       const span = document.createElement('span');
       span.className = 'session-info';
-      span.textContent = `${timeStr} (${durationH} h)`;
+      span.textContent = `${timeStr} (${durationH.toFixed(2)} h)`;
 
       const trash = document.createElement('i');
       trash.className = 'fas fa-trash trash-icon';
@@ -1230,10 +1230,15 @@ Day.showSessions = function(dateKey) {
         );
         Store.sessionLog = log;
 
-        // ③ remove qualquer override manual ou pomodoro daquele dia
-        const detail = Store.studyDataDetail;
-        delete detail[dateKey];
-        delete detail[`${dateKey}_pomodoro`];
+        // ③ subtrai a duração removida do detail
+        const detail   = Store.studyDataDetail;
+        const current  = detail[dateKey] || 0;
+        const updated  = current - durationH;
+        if (updated > 0) {
+          detail[dateKey] = updated;
+        } else {
+          delete detail[dateKey];
+        }
         Store.studyDataDetail = detail;
 
         // ④ força recálculo de tabela, gráficos, timeline e totais
