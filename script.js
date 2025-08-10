@@ -1,5 +1,6 @@
+
 /* ============================================================
-   Estudo Tracker – script.js (versão organizada)
+   Estudo Tracker – script.js (versão organizada + PiP robusto)
    ============================================================ */
 
 /* ---------------------------
@@ -30,7 +31,14 @@ const State = {
   pomodoroTimer: null,
 
   // ◀▶ flag para evitar double-save
-  hasPaused:     false
+  hasPaused:     false,
+
+  // ---- Picture-in-Picture ----
+  pipActive: false,
+  pipVideo:  null,
+  pipCanvas: null,
+  pipStream: null,
+  pipRAF:    null
 };
 
 // —– Persistir estado do timer —–
@@ -82,9 +90,13 @@ const DOM = {
   importFile:   document.getElementById('importFile'),
   btnHardReset: document.getElementById('btnHardReset'),
 
+  // Botão opcional para PiP (se existir no HTML)
+  pipBtn:       document.getElementById('pipBtn'),
+
   navBtns:      document.querySelectorAll('.nav-btn'),
-  navIndicator: document.querySelector('.nav-indicator')
-};
+  navIndicator: document.querySelector('.nav-indicator'),
+
+  planet: document.querySelector('.planet'),};
 
 /* ---------------------------
    2. Storage Layer
@@ -229,8 +241,54 @@ const UI = {
     DOM.navIndicator.style.width = rect.width+'px';
     DOM.navIndicator.style.transform = `translateX(${rect.left - parentRect.left}px)`;
   },
-  confetti(){ if(window.confetti) confetti(); }
+  confetti(){ if(window.confetti) confetti(); },
+
+  updateFire(streak){
+    const fireEl = document.querySelector('.fire');
+    if(!fireEl) return;
+    fireEl.classList.remove('level1','level2','level3','level4');
+    if (streak <= 3) fireEl.classList.add('level1');        // amarelo
+    else if (streak <= 6) fireEl.classList.add('level2');   // laranja
+    else if (streak <= 10) fireEl.classList.add('level3');  // vermelho
+    else fireEl.classList.add('level4');                    // azul
+  },
+
 };
+
+function updateQuickSummary() {
+  const detail = Store.studyDataDetail;
+  const hojeKey = Utils.todayISO();
+
+  const hoje = (detail[hojeKey] || 0) + (detail[`${hojeKey}_pomodoro`] || 0);
+  const semana = (Store.studyDataArray || []).reduce((a,b)=>a+b,0);
+  const meta = parseFloat(DOM.metaHorasInput.value) || 0;
+
+  const hojeStr   = Utils.formatDecimalToHHMM(hoje);
+  const semanaStr = Utils.formatDecimalToHHMM(semana);
+  const metaStr   = Utils.formatDecimalToHHMM(meta);
+
+  // render com ícones e “pílulas”
+  const el = document.getElementById('quickSummary');
+  if (!el) return;
+  el.innerHTML = `
+    <span class="qs-pill qs-today">
+      <i class="qs-icon fas fa-sun"></i>
+      <span>Hoje:</span>
+      <span class="qs-value">${hojeStr}</span>
+    </span>
+    <span class="qs-pill qs-week">
+      <i class="qs-icon fas fa-calendar-week"></i>
+      <span>Semana:</span>
+      <span class="qs-value">${semanaStr}</span>
+    </span>
+    <span class="qs-pill qs-goal">
+      <i class="qs-icon fas fa-bullseye"></i>
+      <span>Meta:</span>
+      <span class="qs-value">${metaStr}</span>
+    </span>
+  `;
+}
+
 
 /* ---------------------------
    5. Timer (livre)
@@ -263,6 +321,28 @@ const Timer = {
       const elapsed = Math.floor((Date.now() - State.startTime) / 1000)
                     + State.elapsedBefore;
       DOM.display.textContent = Utils.formatTime(elapsed);
+
+
+if (DOM.planet) {
+  const angle = (elapsed % 3600) / 3600 * 2 * Math.PI; // radianos
+  const a = 120; // raio horizontal
+  const b = 48;  // raio vertical
+
+  const x = a * Math.cos(angle);
+  const y = b * Math.sin(angle);
+
+  // Move para o centro e aplica deslocamento
+  DOM.planet.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+
+  // Torna visível apenas se já saiu do estado inicial
+  if (elapsed > 0.2) { // 0.2s para não piscar
+    DOM.planet.style.opacity = y < 0 ? 0 : 1;
+  }
+}
+
+
+
+
       UI.updateRing(Math.min(elapsed / 3600, 1)); // 1h como referência
     }, 200);
   },
@@ -292,15 +372,15 @@ const Timer = {
   },
 
   reset() {
-    // Se houver sessão ativa (rodando ou pausada), fecha e salva
-    if (State.sessionStartTs) {
+  // Só salva se estava rodando e não foi pausado antes
+    if (State.sessionStartTs && State.running && !State.hasPaused) {
       const now   = Date.now();
       let elapsed = State.elapsedBefore;
-      if (State.running && State.startTime) {
+      if (State.startTime) {
         elapsed += Math.floor((now - State.startTime) / 1000);
       }
       const type = (State.pomodoroMode && !State.isOnBreak)
-                   ? 'focus' : 'normal';
+                  ? 'focus' : 'normal';
       Sessions.save(State.sessionStartTs, now, type);
 
       if (State.pomodoroMode && !State.isOnBreak) {
@@ -308,17 +388,9 @@ const Timer = {
       } else {
         Day.saveToday(elapsed);
       }
-      State.sessionStartTs = null;
     }
 
-    // Se em Pomodoro, reseta ciclos e estado de descanso
-    if (State.pomodoroMode) {
-      State.currentCycle = 0;
-      State.isOnBreak    = false;
-      Pomodoro.updateBtn();
-    }
-
-    // Zera estado do timer
+    // Reseta tudo normalmente
     State.running       = false;
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
@@ -326,18 +398,25 @@ const Timer = {
     State.startTime     = null;
     State.elapsedBefore = 0;
     State.sessionStartTs= null;
-    State.hasPaused     = false;            // ⬅️ limpa a flag
+    State.hasPaused     = false;
+
+    if (State.pomodoroMode) {
+      State.currentCycle = 0;
+      State.isOnBreak    = false;
+      Pomodoro.updateBtn();
+    }
 
     DOM.display.textContent = "00:00:00";
     UI.setRunButton(false);
     UI.updateRing(0);
-    // reabilita o botão de Pomodoro após o reset
+
     if (DOM.btnStartPomodoro) {
       DOM.btnStartPomodoro.disabled = false;
       Pomodoro.updateBtn();
     }
     saveTimerState();
   }
+
 };
 
 
@@ -353,14 +432,33 @@ window.resetTimer = () => {
    6. Sessions (Timeline logs)
 ---------------------------- */
 const Sessions = {
-  save(startTs, endTs, type = 'normal') {
-    const d   = new Date(startTs);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+ save(startTs, endTs, type = 'normal') {
+    let st = new Date(startTs);
+    let en = new Date(endTs);
+
+    // Enquanto a sessão cruzar a meia-noite, divide em dois registros
+    while (st.toDateString() !== en.toDateString()) {
+      const endOfDay = new Date(st);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const key = `${st.getFullYear()}-${String(st.getMonth() + 1).padStart(2,'0')}-${String(st.getDate()).padStart(2,'0')}`;
+      const log = Store.sessionLog;
+      log[key] = log[key] || [];
+      log[key].push({ start: st.getTime(), end: endOfDay.getTime(), type });
+      Store.sessionLog = log;
+
+      // Avança para 00:00:00 do próximo dia
+      st = new Date(endOfDay.getTime() + 1);
+    }
+
+    // Último pedaço (mesmo dia)
+    const key = `${st.getFullYear()}-${String(st.getMonth() + 1).padStart(2,'0')}-${String(st.getDate()).padStart(2,'0')}`;
     const log = Store.sessionLog;
     log[key] = log[key] || [];
-    log[key].push({ start: startTs, end: endTs, type });
+    log[key].push({ start: st.getTime(), end: en.getTime(), type });
     Store.sessionLog = log;
   }
+
 };
 
 
@@ -511,6 +609,7 @@ const Day = {
     const detail = Store.studyDataDetail;
     detail[key] = (detail[key] || 0) + seconds/3600;
     Store.studyDataDetail = detail;
+    Day.updateStreak();
     Points.add(seconds);
     Recalc.all();
   },
@@ -525,6 +624,7 @@ const Day = {
     if(isNaN(entrada) || entrada < 0){ alert('Número inválido.'); return; }
     detail[key] = entrada;
     Store.studyDataDetail = detail;
+    if (key === Utils.todayISO()) Day.updateStreak();
     Recalc.all();
   },
 
@@ -557,7 +657,23 @@ const Day = {
     }
     Store.lastStudyDay = today;
     Store.streak = streak;
-    if(DOM.streakCounter) DOM.streakCounter.textContent = `${streak} 🔥`;
+    const fireEl = document.querySelector('.fire');
+    if (fireEl) {
+      fireEl.classList.remove('level1', 'level2', 'level3', 'level4');
+
+      if (streak <= 3) {
+        fireEl.classList.add('level1'); // amarelo fraco
+      } else if (streak <= 6) {
+        fireEl.classList.add('level2'); // laranja
+      } else if (streak <= 10) {
+        fireEl.classList.add('level3'); // vermelho
+      } else {
+        fireEl.classList.add('level4'); // azul
+      }
+    }
+
+    if (DOM.streakCounter) DOM.streakCounter.textContent = `${streak}`;
+    UI.updateFire(streak);
   },
 
   editDate(key) {
@@ -573,6 +689,7 @@ const Day = {
     }
     detail[key] = dec;
     Store.studyDataDetail = detail;
+    if (key === Utils.todayISO()) Day.updateStreak();
     Recalc.all();
   },
 
@@ -588,6 +705,7 @@ const Day = {
     }
     detail[key] = current + dec;
     Store.studyDataDetail = detail;
+    if (key === Utils.todayISO()) Day.updateStreak();
     Recalc.all();
   }
 };
@@ -635,6 +753,7 @@ const Recalc = {
     Recalc.updateWeeklyProgress();
     updateScatterChart();   // ← adiciona aqui
     updateInsights();       // ← e aqui
+    updateQuickSummary();
 
   },
   updateWeeklyProgress() {
@@ -1015,7 +1134,8 @@ const DataIO = {
         }
         Recalc.all();
         Charts.renderMetaHistory();
-        Day.updateStreak();
+        if (DOM.streakCounter) DOM.streakCounter.textContent = `${Store.streak || 0}`;
+        UI.updateFire(Store.streak || 0);
         alert('Dados importados com sucesso!');
       }catch(err){
         alert('Arquivo inválido.');
@@ -1100,6 +1220,184 @@ const Notes = {
     });
   }
 };
+
+/* ---------------------------
+   15. Picture-in-Picture (PiP) – robusto e reutilizável
+---------------------------- */
+const PiP = {
+  ensureNodes() {
+    if (!State.pipCanvas) {
+      const c = document.createElement('canvas');
+      c.width = 640;   // dobro da largura
+      c.height = 280;  // dobro da altura
+      State.pipCanvas = c;
+    }
+    if (!State.pipVideo) {
+      const v = document.createElement('video');
+      v.id = 'pipVideo';
+      v.muted = true; // garante autoplay
+      v.playsInline = true;
+      v.setAttribute('playsinline', '');
+      v.style.position = 'fixed';
+      v.style.width = '1px';
+      v.style.height = '1px';
+      v.style.opacity = '0';
+      v.style.pointerEvents = 'none';
+      document.body.appendChild(v);
+      State.pipVideo = v;
+    }
+  },
+
+  drawFrame() {
+    const canvas = State.pipCanvas;
+    const ctx = canvas.getContext('2d');
+    const now = Date.now();
+    const runningPart = (State.running && State.startTime)
+      ? Math.floor((now - State.startTime) / 1000) : 0;
+    const total = Math.max(0, runningPart + State.elapsedBefore);
+
+    // fundo
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // barra de progresso (1h = 100%)
+    const pct = Math.min(total / 3600, 1);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(0, canvas.height - 8, canvas.width * pct, 8);
+
+    // texto
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 48px system-ui, sans-serif'; // para canvas maior
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.imageSmoothingEnabled = true;
+    ctx.fillText(DOM.display?.textContent || '00:00:00', canvas.width / 2, canvas.height / 2);
+
+    State.pipRAF = requestAnimationFrame(PiP.drawFrame);
+  },
+
+  async enter() {
+    if (!('pictureInPictureEnabled' in document)) {
+      alert('Este navegador não expõe a API de Picture-in-Picture.');
+      return;
+    }
+    if (!window.isSecureContext) {
+      alert('Para usar PiP, rode em https:// ou http://localhost (origem segura).');
+      return;
+    }
+    if (!HTMLCanvasElement.prototype.captureStream) {
+      alert('Seu navegador não suporta canvas.captureStream().');
+      return;
+    }
+
+    try {
+      PiP.ensureNodes();
+      const canvas = State.pipCanvas;
+      const video  = State.pipVideo;
+
+      // inicia desenho contínuo
+      if (State.pipRAF) cancelAnimationFrame(State.pipRAF);
+      PiP.drawFrame();
+
+      // cria stream uma vez por entrada PiP
+      const stream = canvas.captureStream(30);
+
+      // evite race: pause antes de mudar srcObject
+      try { video.pause(); } catch {}
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+      State.pipStream = stream;
+
+      // aguarda metadata/canplay
+      await new Promise((res) => {
+        if (video.readyState >= 2) return res();
+        const onCanPlay = () => { cleanup(); res(); };
+        const onLoadedMeta = () => { /* nada */ };
+        const cleanup = () => {
+          video.removeEventListener('canplay', onCanPlay);
+          video.removeEventListener('loadedmetadata', onLoadedMeta);
+        };
+        video.addEventListener('loadedmetadata', onLoadedMeta, { once: true });
+        video.addEventListener('canplay', onCanPlay, { once: true });
+        // fallback em 200ms caso eventos não disparem
+        setTimeout(() => { cleanup(); res(); }, 200);
+      });
+
+      // tenta tocar o vídeo – tolera AbortError
+      try {
+        await video.play();
+      } catch (e) {
+        if (e && e.name === 'AbortError') {
+          // aguarda 'playing' e segue; erro costuma ocorrer quando a fonte mudou
+          await new Promise((res) => {
+            const onPlaying = () => { video.removeEventListener('playing', onPlaying); res(); };
+            video.addEventListener('playing', onPlaying, { once: true });
+            // fallback rápido
+            setTimeout(res, 120);
+          });
+        } else {
+          throw e;
+        }
+      }
+
+      // ligeiro atraso para garantir 1º frame
+      await new Promise(r => setTimeout(r, 60));
+
+      // entra no PiP
+      await video.requestPictureInPicture();
+      State.pipActive = true;
+
+      const cleanup = () => {
+        State.pipActive = false;
+        if (State.pipRAF) cancelAnimationFrame(State.pipRAF);
+        State.pipRAF = null;
+        if (State.pipStream) {
+          try { State.pipStream.getTracks().forEach(t => t.stop()); } catch {}
+          State.pipStream = null;
+        }
+        // não removemos o vídeo/canvas para reuso
+      };
+
+      document.addEventListener('leavepictureinpicture', cleanup, { once: true });
+      video.addEventListener('leavepictureinpicture', cleanup, { once: true });
+
+    } catch (e) {
+      alert(`Falha ao abrir PiP: ${e?.name || 'Erro'} – ${e?.message || e}`);
+    }
+  },
+
+  async exit() {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      }
+    } catch {}
+  },
+
+  async toggle() {
+    if (document.pictureInPictureElement) {
+      await PiP.exit();
+    } else {
+      await PiP.enter();
+    }
+  },
+
+  init() {
+    // Se existir um botão #pipBtn no HTML
+    DOM.pipBtn?.addEventListener('click', PiP.toggle);
+
+    // Atalho de teclado: P
+    document.addEventListener('keyup', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        PiP.toggle();
+      }
+    });
+  }
+};
+
 /* ---------------------------
    13. Eventos
 ---------------------------- */
@@ -1116,15 +1414,15 @@ function bindEvents(){
 
   // Pomodoro
   DOM.btnStartPomodoro?.addEventListener('click', () => {
-  if (!State.pomodoroMode) {
-    State.pomodoroMode = true;
-    Pomodoro.updateBtn();
-  }
-  Pomodoro.startCycle();
+    if (!State.pomodoroMode) {
+      State.pomodoroMode = true;
+      Pomodoro.updateBtn();
+    }
+    Pomodoro.startCycle();
 
-  // bloqueia o botão e mostra ícone de execução
-  DOM.btnStartPomodoro.disabled = true;
-  DOM.btnStartPomodoro.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    // bloqueia o botão e mostra ícone de execução
+    DOM.btnStartPomodoro.disabled = true;
+    DOM.btnStartPomodoro.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
   });
   DOM.btnStartPomodoro?.addEventListener('click', ()=>{ if(State.pomodoroMode) Pomodoro.startCycle(); });
   [DOM.pomodoroFocusInput, DOM.pomodoroBreakInput].forEach(el=> el?.addEventListener('change', Pomodoro.updateFromInputs));
@@ -1141,6 +1439,8 @@ function bindEvents(){
   DOM.btnImport?.addEventListener('click', ()=>DOM.importFile.click());
   DOM.importFile?.addEventListener('change', e=>{
     const file = e.target.files[0];
+    document.getElementById('streakCounter').textContent = Store.streak;
+    UI.updateFire(Store.streak);
     if(file) DataIO.import(file);
   });
   DOM.btnHardReset?.addEventListener('click', DataIO.hardReset);
@@ -1155,7 +1455,7 @@ function init(){
   }
   loadTimerState();
 
-// 3) Atualiza display e anel com o elapsedBefore (mesmo parado)
+  // 3) Atualiza display e anel com o elapsedBefore (mesmo parado)
   const elapsed0 = State.elapsedBefore || 0;
   DOM.display.textContent = Utils.formatTime(elapsed0);
   UI.updateRing(Math.min(elapsed0 / 3600, 1));
@@ -1173,7 +1473,8 @@ function init(){
 
   Meta.load();
   Pomodoro.loadConfig();
-  Day.updateStreak();
+  if (DOM.streakCounter) DOM.streakCounter.textContent = `${Store.streak || 0}`;
+  UI.updateFire(Store.streak || 0);
   Recalc.all();
   Charts.renderMetaHistory();
 
@@ -1181,6 +1482,8 @@ function init(){
   Theme.init();
   bindEvents();
   Notes.init();
+  PiP.init();
+
   setTimeout(()=>document.getElementById('loader')?.remove(), 900);
 }
 init();

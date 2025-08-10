@@ -43,6 +43,59 @@ body{
 h1,h2{margin:20px 0;color:var(--text-dark);text-shadow:1px 1px 1px #0002;}
 
 /* =========================
+   CAMPOS DE ENTRADA (inputs/textarea) – VISUAL UNIFICADO
+   ========================= */
+/* Campos de entrada gerais */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea {
+  background: var(--card);
+  color: var(--text);
+  border: 2px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05) inset;
+  transition: all 0.25s ease;
+}
+
+/* Efeito ao focar */
+input:focus,
+textarea:focus {
+  border-color: var(--prim);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  outline: none;
+}
+
+/* Campos numéricos pequenos (ex: metaHoras, pomodoro) */
+input[type="number"] {
+  max-width: 80px;
+  text-align: center;
+}
+
+/* Campo de notas */
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* Tema escuro */
+:root.dark input,
+:root.dark textarea {
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4) inset;
+}
+:root.dark input:focus,
+:root.dark textarea:focus {
+  border-color: var(--prim);
+  box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.25);
+}
+
+
+
+/* =========================
    LOADER
    ========================= */
 .loader{
@@ -113,9 +166,9 @@ h1,h2{margin:20px 0;color:var(--text-dark);text-shadow:1px 1px 1px #0002;}
 /* =========================
    TABS
    ========================= */
-.tab{display:none;animation:fade .25s;}
-.tab.active{display:block;}
-@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.tab{display:none;}
+.tab.active{display:block;animation:fadeSlide .30s ease;}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* =========================
    CARDS (GLASS)
@@ -151,6 +204,12 @@ h1,h2{margin:20px 0;color:var(--text-dark);text-shadow:1px 1px 1px #0002;}
   height:100%;width:0;background:var(--prim);
   transition:width .4s ease;
 }
+
+/* =========================
+   QUICK SUMMARY (Hoje | Semana | Meta)
+   ========================= */
+.quick-summary{font-size:1rem;font-weight:600;margin-top:8px;color:var(--text-dark);} 
+:root.dark .quick-summary{color:var(--text);} 
 
 /* =========================
    TIMER (CÍRCULO AMARELO + PROGRESSO LARANJA)
@@ -269,9 +328,17 @@ button.danger {
 }
 .pomodoro-config label{font-size:16px;color:#555;}
 :root.dark .pomodoro-config label{color:#ccc;}
+
 .pomodoro-config input{
-  width:60px;padding:6px 8px;font-size:16px;border:1px solid #ccc;
-  border-radius:6px;text-align:center;background:var(--card);color:var(--text);
+  width:60px;
+  padding:6px 8px;
+  font-size:16px;
+  font-weight: bold; /* ← adicione esta linha */
+  border:1px solid #ccc;
+  border-radius:6px;
+  text-align:center;
+  background:var(--card);
+  color:var(--text);
 }
 
 .pomodoro-buttons{margin:15px;}
@@ -287,11 +354,58 @@ button.danger {
 /* =========================
    STREAK
    ========================= */
+/* Container da streak */
+/* Pill + tema claro/escuro já melhorados */
 .streak-box{
-  background:#ffeaa7;color:#6c4400;padding:8px 16px;border-radius:20px;
-  display:inline-block;margin:10px auto;font-weight:600;
+  display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
+  font-weight:600;font-size:1rem;background:linear-gradient(135deg,#ffeaa7,#ffd28a);
+  color:#6c4400;box-shadow:0 4px 10px rgba(0,0,0,.12);
 }
-:root.dark .streak-box{background:#665323;color:#ffd28a;}
+:root.dark .streak-box{
+  background:linear-gradient(135deg,#665323,#4a3f15);color:#ffd28a;box-shadow:0 4px 12px rgba(0,0,0,.45);
+}
+
+/* Chama animada base */
+.fire{
+  position:relative;width:14px;height:20px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation:flicker 1s infinite ease-in-out;
+}
+.fire::before,.fire::after{content:"";position:absolute;border-radius:50%;}
+.fire::before{width:10px;height:14px;top:2px;left:2px;animation:flicker 1.2s infinite ease-in-out;}
+.fire::after {width: 6px;height: 8px; top:5px;left:4px;animation:flicker .8s infinite ease-in-out;}
+
+@keyframes flicker{
+  0%,100%{transform:scale(1) translateY(0);opacity:1}
+  50%{transform:scale(1.1) translateY(-1px);opacity:.85}
+}
+
+/* Intensidades por nível */
+.fire.level1{ /* 1–3: amarelo fraco */
+  background:radial-gradient(circle at 50% 80%,#ffee88 0%,#ffcc33 60%,transparent 70%);
+}
+.fire.level1::before{background:radial-gradient(circle at 50% 80%,#fff5aa 0%,#ffcc33 60%,transparent 70%);}
+.fire.level1::after {background:radial-gradient(circle at 50% 80%,#fff5cc 0%,#ffcc66 60%,transparent 70%);}
+
+.fire.level2{ /* 4–6: laranja */
+  background:radial-gradient(circle at 50% 80%,#ffd84d 0%,#ff9900 60%,transparent 70%);
+}
+.fire.level2::before{background:radial-gradient(circle at 50% 80%,#ffe066 0%,#ff9900 60%,transparent 70%);}
+.fire.level2::after {background:radial-gradient(circle at 50% 80%,#ffeb99 0%,#ffb84d 60%,transparent 70%);}
+
+.fire.level3{ /* 7–10: vermelho */
+  background:radial-gradient(circle at 50% 80%,#ff884d 0%,#ff0000 60%,transparent 70%);
+}
+.fire.level3::before{background:radial-gradient(circle at 50% 80%,#ff9f66 0%,#ff0000 60%,transparent 70%);}
+.fire.level3::after {background:radial-gradient(circle at 50% 80%,#ffb199 0%,#ff4d4d 60%,transparent 70%);}
+
+.fire.level4{ /* >10: azul */
+  background:radial-gradient(circle at 50% 80%,#88ccff 0%,#0044ff 60%,transparent 70%);
+}
+.fire.level4::before{background:radial-gradient(circle at 50% 80%,#aaddff 0%,#0044ff 60%,transparent 70%);}
+.fire.level4::after {background:radial-gradient(circle at 50% 80%,#cceeff 0%,#3399ff 60%,transparent 70%);}
+
+
+
 
 /* =========================
    TABLE / META
@@ -306,10 +420,34 @@ th,td{padding:10px;border:1px solid #ddd;}
 th{background:var(--prim);color:#fff;}
 
 .meta-container{margin-top:10px;font-size:16px;}
+
+.meta-container label {
+  font-weight: 600;                 /* Negrito moderado */
+  color: var(--text-dark);          /* Cor do tema */
+  font-size: 1.05rem;                /* Um pouco maior */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;                          /* Espaço para ícone, se quiser */
+  background: rgba(0,0,0,0.03);      /* Fundo sutil */
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+:root.dark .meta-container label {
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
 #metaHoras{
-  width:80px;padding:6px 10px;font-size:16px;
-  border:1px solid #ccc;border-radius:6px;margin-left:8px;
-  background:var(--card);color:var(--text);
+  width:80px;
+  padding:6px 10px;
+  font-size:16px;
+  font-weight: bold; /* ← adicione esta linha */
+  border:1px solid #ccc;
+  border-radius:6px;
+  margin-left:8px;
+  background:var(--card);
+  color:var(--text);
 }
 .total-semana-box{
   display:inline-block;padding:12px 20px;margin:15px auto;
@@ -318,10 +456,10 @@ th{background:var(--prim);color:#fff;}
   transition:background-color .3s,color .3s;
   border-left:6px solid var(--bg2);
 }
-.meta-baixa{background:#f8d7da;color:#721c24;border-left-color:var(--danger);}
-.meta-media-baixa{background:#fff3cd;color:#856404;border-left-color:var(--warn);}
-.meta-media-alta{background:#d1ecf1;color:#0c5460;border-left-color:#17a2b8;}
-.meta-quase{background:#c3e6cb;color:#155724;border-left-color:var(--succ);}
+.meta-baixa{background:#f8d7da;color:#721c24;border-left-color:var(--danger);} 
+.meta-media-baixa{background:#fff3cd;color:#856404;border-left-color:var(--warn);} 
+.meta-media-alta{background:#d1ecf1;color:#0c5460;border-left-color:#17a2b8;} 
+.meta-quase{background:#c3e6cb;color:#155724;border-left-color:var(--succ);} 
 .meta-completa{background:#1e7e34;color:#fff;border-left-color:#155724;}
 
 /* =========================
@@ -382,7 +520,7 @@ canvas{margin-top:20px;max-width:100%;}
   position:absolute;top:0;bottom:0;background:var(--succ);
   opacity:.85;border-radius:9px;
 }
-.timeline-segment.break{background:var(--info);}
+.timeline-segment.break{background:var(--info);} 
 .timeline-now{
   position:absolute;top: 16px;;bottom:0;width:2px;background:var(--danger);
   box-shadow:0 0 4px var(--danger);
@@ -750,3 +888,289 @@ button:disabled {
   overflow-y: auto;
   font-size: 0.9rem;
 }
+
+#pipBtn {
+  margin-top: 1.5rem; /* ou 2rem se quiser mais espaço */
+}
+
+:root.dark .timer-ring {
+  background: radial-gradient(circle at center, #4a3f15 0%, #2a2a31 90%);
+  box-shadow: 0 0 10px rgba(255, 223, 100, 0.15), inset 0 0 20px rgba(255, 200, 80, 0.1);
+}
+
+:root.dark .timer {
+  color: #ffd84d;
+  text-shadow: 0 0 6px rgba(255, 216, 77, 0.4), 0 0 12px rgba(255, 216, 77, 0.2);
+}
+
+:root.dark .timer-icon {
+  color: var(--orange);
+  filter: drop-shadow(0 0 4px rgba(255, 157, 77, 0.5));
+}
+
+:root.dark .timer {
+  border: 2px solid rgba(255, 216, 77, 0.2);
+  padding: 12px;
+  border-radius: 50%;
+}
+:root.dark .timer-icon {
+  display: none;
+}
+
+:root.dark .planet {
+  opacity: 0;
+  transition: transform 0.2s linear, opacity 0.3s ease;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: #4dabf7;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  box-shadow: 0 0 6px #4dabf7;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s linear;
+}
+
+:root:not(.dark) .planet {
+  display: none;
+}
+
+
+
+.timer-ring {
+  overflow: visible !important;
+}
+
+
+/* === Quick Summary bonito === */
+.quick-summary{
+  display:flex; justify-content:center; align-items:center; gap:10px;
+  font-weight:700; margin:10px auto 4px; flex-wrap:wrap;
+}
+.qs-pill{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 12px; border-radius:999px;
+  background:rgba(255,255,255,.65);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  border:1px solid rgba(0,0,0,.06);
+  font-weight:600;
+}
+:root.dark .qs-pill{
+  background:rgba(42,42,49,.55);
+  border:1px solid rgba(255,255,255,.08);
+}
+.qs-icon{ opacity:.9 }
+.qs-value{ font-variant-numeric: tabular-nums; letter-spacing:.3px }
+
+/* Cores por tipo */
+.qs-today   { color:#0c5460; }
+.qs-week    { color:#155724; }
+.qs-goal    { color:#664d03; }
+:root.dark .qs-today { color:#7bd7e6; }
+:root.dark .qs-week  { color:#9be99f; }
+:root.dark .qs-goal  { color:#ffd375; }
+
+/* Barra semanal */
+.weekly-progress{
+  position:relative; overflow:hidden; height:12px;
+  background:linear-gradient(90deg,#e9ecef,#f1f3f5);
+  border-radius:999px;
+}
+:root.dark .weekly-progress{
+  background:linear-gradient(90deg,#2e2e34,#3a3a40);
+}
+
+/* IMPORTANTE: o fill precisa ser relative para o ::after grudar nele */
+.weekly-progress-fill{
+  position: relative;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--succ), #00c2ff);
+  transition: width .5s ease;
+  overflow: hidden; /* garante corte perfeito do padrão */
+}
+
+/* Textura DIAGONAL ESTÁTICA cobrindo 100% do fill (sem animação) */
+.weekly-progress-fill::after{
+  content:"";
+  position:absolute;
+  inset:0;                 /* cobre toda a área atual do fill */
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,.15) 0 8px,
+    rgba(255,255,255,0)   8px 16px
+  );
+  /* sem animação! */
+  animation: none !important;
+  pointer-events: none;
+}
+
+
+#btnStartPomodoro {
+  background: linear-gradient(135deg, var(--info), #1aa3b8);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 999px;            /* formato pill */
+  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+#btnStartPomodoro i {
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  padding: 4px;
+}
+
+#btnStartPomodoro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #1aa3b8, var(--info));
+}
+
+#btnStartPomodoro:active {
+  transform: scale(0.97);
+}
+
+/* ===== LIGHT+ THEME PACK (cola no fim do arquivo) ===================== */
+
+/* Paleta mais viva no claro (sem afetar o dark) */
+:root:not(.dark){
+  --prim:#3b82f6;   /* azul */
+  --succ:#22c55e;   /* verde */
+  --info:#0ea5e9;   /* ciano */
+  --warn:#f59e0b;   /* âmbar */
+  --danger:#ef4444; /* vermelho */
+
+  --bg1:#eef3fb;
+  --bg2:#dfe9f7;
+  --card:rgba(255,255,255,.66);
+}
+
+/* Fundo com “aurora” suave (sem imagens) */
+:root:not(.dark) body{
+  background:
+    radial-gradient(1200px 600px at -10% -10%, rgba(59,130,246,.12), transparent 60%),
+    radial-gradient(900px 500px  at 110% 10%,  rgba(14,165,233,.10), transparent 55%),
+    radial-gradient(700px 700px  at 50% 120%,  rgba(34,197,94,.10),  transparent 60%),
+    linear-gradient(135deg, var(--bg1), var(--bg2));
+}
+
+/* Topbar “flutuante” */
+:root:not(.dark) .topbar{
+  background: rgba(255,255,255,.75);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border:1px solid rgba(30,58,138,.08);
+  box-shadow: 0 8px 24px rgba(15,23,42,.06);
+  border-radius: 14px;
+  margin: 8px auto 0;
+  width: clamp(260px, 92%, 980px);
+}
+
+/* Cards mais “glass” no claro */
+:root:not(.dark) .card,
+:root:not(.dark) #timelineContainer,
+:root:not(.dark) .charts{
+  background: rgba(255,255,255,.72);
+  border:1px solid rgba(30,58,138,.08);
+  box-shadow:
+    0 6px 20px rgba(15,23,42,.06),
+    inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* Pílulas do resumo com ícone destacado */
+:root:not(.dark) .qs-pill{
+  background: rgba(255,255,255,.85);
+  border:1px solid rgba(30,58,138,.08);
+  box-shadow: 0 8px 16px rgba(15,23,42,.06);
+}
+.qs-icon{
+  width:22px;height:22px;display:inline-grid;place-items:center;
+  border-radius:999px;background:rgba(0,0,0,.06);
+}
+
+/* Botões “verdes” mais caprichados */
+:root:not(.dark) .timer-controls .icon-btn,
+:root:not(.dark) .buttons button{
+  border-radius: 999px;
+  box-shadow: 0 8px 18px rgba(34,197,94,.25);
+}
+:root:not(.dark) .timer-controls .icon-btn:hover,
+:root:not(.dark) .buttons button:hover{
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* Botão Pomodoro (refino) */
+:root:not(.dark) #btnStartPomodoro{
+  background: linear-gradient(135deg, var(--info), #16b2d6);
+  border:1px solid rgba(2,132,199,.25);
+  box-shadow: 0 10px 22px rgba(2,132,199,.25);
+  letter-spacing:.2px;
+}
+:root:not(.dark) #btnStartPomodoro:hover{
+  background: linear-gradient(135deg, #16b2d6, var(--info));
+  transform: translateY(-2px);
+}
+
+/* Inputs numéricos com números bem legíveis */
+:root:not(.dark) input[type="number"]{
+  font-weight:700;
+  letter-spacing:.3px;
+}
+
+/* Label “Meta semanal (horas)” com selo */
+:root:not(.dark) .meta-container label{
+  background: rgba(0,0,0,.04);
+  border:1px solid rgba(30,58,138,.08);
+  padding:8px 12px;border-radius:10px;font-weight:700;
+}
+
+/* Timer ring com halo agradável no claro */
+:root:not(.dark) .timer-ring{
+  background: radial-gradient(circle at 50% 45%, #fffbe6 0%, #fff6d6 65%, rgba(255,255,255,0) 70%);
+  box-shadow:
+    0 12px 26px rgba(0,0,0,.10),
+    inset 0 0 0 6px rgba(255,255,255,.65);
+}
+:root:not(.dark) .ring-bg{ stroke: #ffd972; }
+
+/* Barra semanal com brilho discreto */
+:root:not(.dark) .weekly-progress{
+  background: linear-gradient(90deg,#e8edf5,#f3f6fb);
+  border:1px solid rgba(30,58,138,.06);
+}
+:root:not(.dark) .weekly-progress-fill{
+  background: linear-gradient(90deg, #34d399, #22d3ee);
+  box-shadow: inset 0 0 3px rgba(255,255,255,.6);
+}
+
+/* Streak pill mais “badge” */
+:root:not(.dark) .streak-box{
+  background: linear-gradient(135deg,#fff0c2,#ffe39a);
+  border:1px solid rgba(245,158,11,.25);
+  box-shadow: 0 8px 18px rgba(245,158,11,.2);
+}
+
+:root.dark .topbar {
+  position: sticky;
+  top: 8px;
+  margin: 8px auto 12px; /* 12px de margem inferior para afastar da barra de progresso */
+  width: clamp(260px, 92%, 980px);
+  background: rgba(42, 42, 49, 0.75);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+}
+
+
