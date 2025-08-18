@@ -96,7 +96,14 @@ const DOM = {
   navBtns:      document.querySelectorAll('.nav-btn'),
   navIndicator: document.querySelector('.nav-indicator'),
 
-  planet: document.querySelector('.planet'),};
+  planet: document.querySelector('.planet'),
+  mini:        document.getElementById('miniTimer'),
+  miniBtn:     document.getElementById('miniBtn'),
+  miniDisplay: document.getElementById('miniDisplay'),
+  miniPause:   document.getElementById('miniPause'),
+  miniClose:   document.getElementById('miniClose'),
+};
+  
 
 /* ---------------------------
    2. Storage Layer
@@ -252,8 +259,415 @@ const UI = {
     else if (streak <= 10) fireEl.classList.add('level3');  // vermelho
     else fireEl.classList.add('level4');                    // azul
   },
+    setMiniVisible(show){
+    if(!DOM.mini) return;
+    DOM.mini.classList.toggle('hidden', !show);
+  },
+  setMiniPlayIcon(running){
+    if(!DOM.miniPause) return;
+    const i = DOM.miniPause.querySelector('i');
+    i.classList.toggle('fa-pause', running);
+    i.classList.toggle('fa-play', !running);
+  },
+
 
 };
+// ============================
+//  Document Picture-in-Picture
+// ============================
+const DocPiP = {
+  win: null,
+  els: {},
+  _tick: null,
+  _mo: null,
+  _moTheme: null,
+
+  // usado para inferir play/pause pelo avanço do tempo
+  _lastSec: null,
+
+  options: {
+    width: 380,
+    height: 150,
+    autoOpenOnBlur: true, // abrir automaticamente ao sair da aba
+    syncEveryMs: 250,
+    closeOnVisible: false // ← não fechar ao voltar p/ a aba
+  },
+
+  // ---- Utilidades ----
+  supported() {
+    return typeof window.documentPictureInPicture?.requestWindow === 'function';
+  },
+
+  _mainDisplay() {
+    const el =
+      document.getElementById('display') ||
+      document.querySelector('[data-role="display"], .display, .time, .timer');
+    return (el?.textContent || '00:00:00').trim();
+  },
+
+  _parseToSec(str){
+    if (!str) return null;
+    const parts = String(str).trim().split(':').map(x => parseInt(x, 10));
+    if (parts.some(Number.isNaN)) return null;
+    if (parts.length === 2)  return parts[0]*60 + parts[1];
+    if (parts.length === 3)  return parts[0]*3600 + parts[1]*60 + parts[2];
+    return null;
+  },
+
+  _onWindowBlur() {
+    if (!DocPiP.options.autoOpenOnBlur) return;
+
+    // está visível (ainda não ficou hidden) e timer rodando?
+    const running =
+      (typeof Timer?.isRunning === 'function') ? !!Timer.isRunning() :
+      (typeof State?.running !== 'undefined')  ? !!State.running : true;
+
+    if (document.visibilityState === 'visible' && running) {
+      // abrir enquanto o gesto do usuário ainda é válido
+      Promise.resolve(DocPiP.open()).catch(()=>{});
+    }
+  },
+
+
+  // Detecta se está rodando usando várias fontes + inferência
+  _isRunning(currentSec){
+    try {
+      if (typeof Timer?.isRunning === 'function') return !!Timer.isRunning();
+      if (Timer && typeof Timer.running !== 'undefined') return !!Timer.running;
+      if (Timer && typeof Timer.state === 'object' && 'running' in Timer.state) return !!Timer.state.running;
+      if (typeof State?.running !== 'undefined') return !!State.running; // fallback direto no seu State
+    } catch(e){ /* ignora */ }
+
+    // sinais globais (caso você use data-running)
+    const htmlFlag = document.documentElement?.dataset?.running === '1';
+    const bodyFlag = document.body?.dataset?.running === '1';
+    if (htmlFlag || bodyFlag) return true;
+
+    // inferência por avanço do tempo no display
+    if (typeof currentSec === 'number' && typeof this._lastSec === 'number') {
+      return currentSec !== this._lastSec;
+    }
+
+    // desconhecido => assume pausado
+    return false;
+  },
+
+  // ---- Abertura / Fechamento ----
+  async open() {
+    if (!this.supported()) return;
+    if (this.win && !this.win.closed) { try { this.win.focus(); } catch {} return; }
+
+    this.win = await documentPictureInPicture.requestWindow({
+      width: this.options.width,
+      height: this.options.height
+    });
+
+    // Head / estilos
+    this.win.document.head.innerHTML = `
+      <meta charset="utf-8">
+      <title>Mini Timer</title>
+      <style>
+      :root{
+        --bg:#ffffff;
+        --card:rgba(255,255,255,.92);
+        --text:#111;
+        --succ:#00b37e;
+        --danger:#ff4d4f;
+        --border:rgba(0,0,0,.12);
+      }
+      .dark:root{
+        --bg:#0f1115;
+        --card:rgba(17,17,17,.92);
+        --text:#fff;
+        --border:rgba(255,255,255,.14);
+      }
+
+      html,body{height:100%}
+      body{
+        margin:0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+        background: var(--card);
+        color: var(--text);
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        box-shadow: 0 12px 40px rgba(0,0,0,.25);
+        outline: 1px solid var(--border);
+        box-sizing: border-box;
+
+        /* mínimos para não distorcer com o layout atual */
+        min-width: 360px;
+        min-height: 120px;
+      }
+
+      .time{
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        font-size: 40px;
+        letter-spacing: .5px;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .actions{ display:flex; gap:10px; }
+
+      .btn{
+        width:48px; height:48px; border:none; border-radius:14px;
+        display:grid; place-items:center; cursor:pointer;
+        background: var(--succ);
+        color:#fff; font-size:22px; line-height:1;
+        box-shadow: 0 8px 24px rgba(0,0,0,.18), inset 0 -2px 0 rgba(0,0,0,.15);
+        transition: transform .1s ease, filter .2s ease, opacity .2s ease;
+      }
+      .btn:hover{ filter: brightness(1.05); }
+      .btn:active{ transform: scale(.96); }
+      .btn.danger{ background: var(--danger); }
+
+      .hint{
+        position: fixed; right: 12px; bottom: 8px;
+        font-size: 11px; opacity:.7; user-select:none;
+      }
+
+      /* Modo compacto (permite reduzir até ~300×100 sem distorcer) */
+      @media (max-width: 360px){
+        .time{ font-size: 34px; letter-spacing: .4px; }
+        .btn{ width:40px; height:40px; border-radius:12px; font-size:19px; }
+        body{ min-width: 300px; min-height: 100px; }
+      }
+    </style>
+    `;
+
+    // Body / UI
+    this.win.document.body.innerHTML = `
+      <div class="time" id="pipTime">00:00:00</div>
+      <div class="actions">
+        <button class="btn" id="pipPause" aria-label="Pausar/retomar" title="Espaço: pausar/retomar">▶</button>
+        <button class="btn danger" id="pipReset" aria-label="Resetar" title="R: resetar">✕</button>
+      </div>
+      <div class="hint">Espaço: play/pause • R: reset • Esc: fechar</div>
+    `;
+
+    // Cache de elementos
+    this.els = {
+      time: this.win.document.getElementById('pipTime'),
+      pause: this.win.document.getElementById('pipPause'),
+      reset: this.win.document.getElementById('pipReset')
+    };
+
+    // Eventos da mini-janela
+    this.els.pause.addEventListener('click', () => {
+      if (typeof Timer?.toggle === 'function') Timer.toggle();
+      this.sync();
+    });
+    this.els.reset.addEventListener('click', () => {
+      if (typeof Timer?.reset === 'function') Timer.reset();
+      this.sync();
+    });
+    this.win.addEventListener('keydown', (e) => {
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (typeof Timer?.toggle === 'function') Timer.toggle();
+        this.sync();
+      } else if (e.key.toLowerCase() === 'r') {
+        if (typeof Timer?.reset === 'function') Timer.reset();
+        this.sync();
+      } else if (e.key === 'Escape') {
+        this.close();
+      }
+    });
+
+    // Sincroniza e inicia "tick"
+    this.sync();
+    this._startTick();
+
+    // Fecha se a janela for encerrada
+    this.win.addEventListener('pagehide', () => this.close());
+
+    // Tema claro/escuro
+    this._syncTheme();
+    this._watchTheme();
+
+    return this.win;
+  },
+
+  close() {
+    try { this._stopTick(); } catch {}
+    if (this.win && !this.win.closed) {
+      try { this.win.close(); } catch {}
+    }
+    this.win = null;
+    this.els = {};
+  },
+
+  toggle() {
+    if (this.win && !this.win.closed) this.close();
+    else this.open();
+  },
+
+  // ---- Sincronização ----
+  sync() {
+    if (!this.win || this.win.closed) return;
+
+    const txt = this._mainDisplay();
+    const sec = this._parseToSec(txt);
+
+    if (this.els.time) this.els.time.textContent = txt;
+
+    const running = this._isRunning(sec);
+    if (this.els.pause) this.els.pause.textContent = running ? '⏸' : '▶';
+
+    // guarda para a próxima inferência
+    this._lastSec = sec;
+  },
+
+  _startTick() {
+    this._stopTick();
+    this._tick = setInterval(() => this.sync(), this.options.syncEveryMs);
+
+    const disp = document.getElementById('display') ||
+                 document.querySelector('[data-role="display"], .display, .time, .timer');
+    if (disp) {
+      this._mo = new MutationObserver(() => this.sync());
+      this._mo.observe(disp, { childList: true, characterData: true, subtree: true });
+    }
+  },
+
+  _stopTick() {
+    if (this._tick) { clearInterval(this._tick); this._tick = null; }
+    if (this._mo)   { try { this._mo.disconnect(); } catch {} this._mo = null; }
+  },
+
+  // ---- Tema ----
+  _syncTheme() {
+    if (!this.win || this.win.closed) return;
+    const prefersDark = (() => {
+      try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; }
+    })();
+    const isDark =
+      document.documentElement.classList.contains('dark') ||
+      document.body.classList.contains('dark') ||
+      prefersDark;
+    this.win.document.documentElement.classList.toggle('dark', !!isDark);
+  },
+
+  _watchTheme() {
+    if (this._moTheme) try { this._moTheme.disconnect(); } catch {}
+    this._moTheme = new MutationObserver(() => this._syncTheme());
+    this._moTheme.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    this._moTheme.observe(document.body,          { attributes: true, attributeFilter: ['class'] });
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this._syncTheme());
+    } catch {}
+  },
+
+  onThemeChange(){ this._syncTheme(); }, // usado pelo seu listener externo
+
+  // ---- Auto abrir/fechar ao sair/voltar para a aba ----
+  enableAutoOpen() {
+    if (this.options.autoOpenOnBlur) return;
+    this.options.autoOpenOnBlur = true;
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+  },
+
+  disableAutoOpen() {
+    this.options.autoOpenOnBlur = false;
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+  },
+
+  onVisibilityChange() {
+    if (!DocPiP.options.autoOpenOnBlur) return;
+
+    const running =
+      (typeof Timer?.isRunning === 'function') ? !!Timer.isRunning() :
+      (typeof State?.running !== 'undefined')  ? !!State.running : true;
+
+    if (document.hidden && running) {
+      // fallback: tentar abrir também quando já ficou oculta
+      Promise.resolve(DocPiP.open()).catch(()=>{});
+    } else if (DocPiP.options.closeOnVisible) {
+      // por padrão NÃO fecha ao ficar visível (evita sumir)
+      DocPiP.close();
+    }
+  },
+
+
+  // ---- Inicialização ----
+  init() {
+    if (!this.supported()) return;
+    window.addEventListener('beforeunload', () => this.close());
+    // listeners p/ troca de guia do navegador
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('blur', this._onWindowBlur, true);
+    this.enableAutoOpen();
+  }
+
+};
+
+
+
+/* ---------------------------
+   Mini Timer (flutuante)
+---------------------------- */
+const MiniTimer = {
+  dragging: false,
+  offsetX: 0,
+  offsetY: 0,
+
+  open(){
+    UI.setMiniVisible(true);
+    UI.setMiniPlayIcon(State.running);
+    MiniTimer.syncTime();
+  },
+  close(){ UI.setMiniVisible(false); },
+
+  toggle(){
+    const isHidden = DOM.mini?.classList.contains('hidden');
+    isHidden ? MiniTimer.open() : MiniTimer.close();
+  },
+
+  syncTime(){
+    if(!DOM.miniDisplay || !DOM.display) return;
+    DOM.miniDisplay.textContent = DOM.display.textContent;
+  },
+
+  bind(){
+    // Botões
+    DOM.miniBtn?.addEventListener('click', MiniTimer.toggle);
+    DOM.miniClose?.addEventListener('click', MiniTimer.close);
+    DOM.miniPause?.addEventListener('click', () => {
+      Timer.toggle();
+      UI.setMiniPlayIcon(State.running);
+      MiniTimer.syncTime();
+    });
+
+    // Arrastar (desktop simples)
+    if(DOM.mini){
+      const el = DOM.mini;
+      el.addEventListener('mousedown', (e) => {
+        // evita iniciar arrasto clicando nos botões
+        if(e.target.closest('.mini-actions')) return;
+        MiniTimer.dragging = true;
+        const rect = el.getBoundingClientRect();
+        MiniTimer.offsetX = e.clientX - rect.left;
+        MiniTimer.offsetY = e.clientY - rect.top;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if(!MiniTimer.dragging) return;
+        el.style.left = 'auto'; // usamos right/bottom
+        el.style.top  = Math.max(8, e.clientY - MiniTimer.offsetY) + 'px';
+        el.style.right = Math.max(8, window.innerWidth - (e.clientX + (el.offsetWidth - MiniTimer.offsetX))) + 'px';
+        el.style.bottom = 'auto';
+      });
+
+      document.addEventListener('mouseup', () => MiniTimer.dragging = false);
+    }
+  }
+};
+
 
 function updateQuickSummary() {
   const detail = Store.studyDataDetail;
@@ -316,11 +730,14 @@ const Timer = {
     }
 
     UI.setRunButton(true);
+    UI.setMiniPlayIcon(true);
     saveTimerState();
     State.timerInterval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - State.startTime) / 1000)
                     + State.elapsedBefore;
       DOM.display.textContent = Utils.formatTime(elapsed);
+      DocPiP.sync();
+
 
 
 if (DOM.planet) {
@@ -353,6 +770,9 @@ if (DOM.planet) {
     clearInterval(State.timerInterval);
     clearInterval(State.pomodoroTimer);
     UI.setRunButton(false);
+    UI.setMiniPlayIcon(false);
+    MiniTimer.syncTime();
+    DocPiP.sync();
 
     const now     = Date.now();
     const elapsed = Math.floor((now - State.startTime) / 1000);
@@ -389,6 +809,9 @@ if (DOM.planet) {
         Day.saveToday(elapsed);
       }
     }
+    DOM.display.textContent = "00:00:00";
+    MiniTimer.syncTime();
+    DocPiP.sync();
 
     // Reseta tudo normalmente
     State.running       = false;
@@ -409,6 +832,9 @@ if (DOM.planet) {
     DOM.display.textContent = "00:00:00";
     UI.setRunButton(false);
     UI.updateRing(0);
+    UI.setMiniPlayIcon(false);
+    MiniTimer.syncTime();
+
 
     if (DOM.btnStartPomodoro) {
       DOM.btnStartPomodoro.disabled = false;
@@ -418,6 +844,42 @@ if (DOM.planet) {
   }
 
 };
+
+// Torna acessível globalmente (usado pela mini-janela)
+window.Timer = Timer;
+
+// ---- Hook para o DocPiP saber se está rodando ----
+(function hookTimerForDocPiP(){
+  if (!window.Timer || hookTimerForDocPiP._done) return;
+  hookTimerForDocPiP._done = true;
+
+  const setFlag = () => {
+    const running =
+      (typeof Timer?.isRunning === 'function') ? !!Timer.isRunning() :
+      ('running' in Timer)                      ? !!Timer.running :
+      (Timer.state && 'running' in Timer.state) ? !!Timer.state.running :
+      false;
+    // Sinal global de execução
+    document.documentElement.dataset.running = running ? '1' : '0';
+    try { if (window.DocPiP) DocPiP.sync(); } catch {}
+  };
+
+  // Envolve métodos chave para atualizar o sinal
+  ['start','pause','toggle','reset'].forEach(name=>{
+    if (typeof Timer[name] === 'function') {
+      const orig = Timer[name];
+      Timer[name] = function(...args){
+        const r = orig.apply(this, args);
+        setFlag();
+        return r;
+      };
+    }
+  });
+
+  // Estado inicial
+  setFlag();
+})();
+
 
 
 // Expor a função global para o botão inline
@@ -1166,16 +1628,14 @@ const Tabs = {
         document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
         document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
 
+
         UI.moveIndicator(btn);
       });
     });
-    // mover indicador após render inicial
-    setTimeout(()=>{
-      const active = document.querySelector('.nav-btn.active');
-      if(active) UI.moveIndicator(active);
-    }, 100);
+    setTimeout(()=>{ const active = document.querySelector('.nav-btn.active'); if(active) UI.moveIndicator(active); }, 100);
   }
 };
+
 
 const Theme = {
   init(){
@@ -1246,6 +1706,12 @@ const PiP = {
       document.body.appendChild(v);
       State.pipVideo = v;
     }
+  },
+
+  supported() {
+    return 'pictureInPictureEnabled' in document
+        && window.isSecureContext
+        && !!HTMLCanvasElement.prototype.captureStream;
   },
 
   drawFrame() {
@@ -1465,6 +1931,8 @@ function init(){
   // 4) Se estava rodando, retoma o setInterval sem zerar o elapsed
   if (State.running && State.startTime) {
     State.timerInterval = setInterval(() => {
+      DOM.display.textContent = Utils.formatTime(elapsed);
+      MiniTimer.syncTime();
       const e = Math.floor((Date.now() - State.startTime) / 1000) + State.elapsedBefore;
       DOM.display.textContent = Utils.formatTime(e);
       UI.updateRing(Math.min(e / 3600, 1));
@@ -1477,12 +1945,29 @@ function init(){
   UI.updateFire(Store.streak || 0);
   Recalc.all();
   Charts.renderMetaHistory();
+  DOM.display.textContent = Utils.formatTime(elapsed0);
+  MiniTimer.syncTime();
+
 
   Tabs.init();
   Theme.init();
   bindEvents();
   Notes.init();
   PiP.init();
+  MiniTimer.bind();
+  // Mini-janela: abrir/fechar quando a aba fica oculta/visível
+  document.addEventListener('visibilitychange', DocPiP.onVisibilityChange);
+
+  // Mantém a hora do mini em sincronia mesmo quando outras partes alteram o display
+  if (DOM.display) {
+    new MutationObserver(() => DocPiP.sync())
+      .observe(DOM.display, { childList:true, characterData:true, subtree:true });
+  }
+
+// Espelha mudança de tema
+document.getElementById('themeToggle')?.addEventListener('click', ()=> DocPiP.onThemeChange());
+
+
 
   setTimeout(()=>document.getElementById('loader')?.remove(), 900);
 }
@@ -1572,3 +2057,101 @@ document.addEventListener('click', function(e) {
     Day.hideSessions();
   }
 });
+
+// === MiniTimer Auto ===
+// Mostra o mini-timer ao sair da aba do cronômetro e mantém na tela.
+(function(){
+  const elMini = document.getElementById('miniTimer');
+  if(!elMini) return;
+
+  const elMiniDisplay = document.getElementById('miniDisplay');
+  const elPause = document.getElementById('miniPause');
+  const elClose = document.getElementById('miniClose');
+
+  // sincroniza com o display principal
+  function syncMini(){
+    const main = document.getElementById('display');
+    if(main && elMiniDisplay){
+      elMiniDisplay.textContent = main.textContent;
+    }
+  }
+
+  function openMini(){ elMini.classList.remove('hidden'); syncMini(); }
+  function closeMini(){ elMini.classList.add('hidden'); }
+
+  function isTimerTabActive(){
+    const tab = document.getElementById('tab-timer');
+    return !!(tab && tab.classList.contains('active'));
+  }
+
+  function updateByTab(){
+    if(isTimerTabActive()){
+      closeMini();
+    }else{
+      openMini();
+    }
+  }
+
+  // liga nos botões de navegação (tabs)
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      // deixa a troca aplicar a classe .active e então verifica
+      setTimeout(updateByTab, 0);
+    });
+  });
+
+  // observa mudança de classe na #tab-timer, caso a troca de abas seja programática
+  const tabTimer = document.getElementById('tab-timer');
+  if(tabTimer){
+    new MutationObserver((mutList)=>{
+      for(const m of mutList){
+        if(m.type === 'attributes' && m.attributeName === 'class'){
+          updateByTab();
+          break;
+        }
+      }
+    }).observe(tabTimer, { attributes:true });
+  }
+
+  // mantém o tempo do mini sempre igual ao display principal
+  const mainDisplay = document.getElementById('display');
+  if(mainDisplay){
+    new MutationObserver(syncMini).observe(mainDisplay, {
+      characterData:true, childList:true, subtree:true
+    });
+  }
+
+  // ações
+  if(elPause){
+    elPause.addEventListener('click', ()=>{
+  if (typeof Timer?.toggle === 'function') Timer.toggle();
+    syncMini();
+  });
+  }
+  if(elClose){
+    elClose.addEventListener('click', closeMini);
+  }
+
+  // arrastar no desktop
+  let dragging=false, offX=0, offY=0;
+  elMini.addEventListener('mousedown', (e)=>{
+    if(e.target.closest('.mini-actions')) return;
+    dragging = true;
+    const r = elMini.getBoundingClientRect();
+    offX = e.clientX - r.left;
+    offY = e.clientY - r.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    elMini.style.left = (e.clientX - offX) + 'px';
+    elMini.style.top  = (e.clientY - offY) + 'px';
+    elMini.style.right = 'auto';
+    elMini.style.bottom = 'auto';
+  });
+  document.addEventListener('mouseup', ()=> dragging=false);
+
+  // estado inicial
+  updateByTab();
+  syncMini();
+})();

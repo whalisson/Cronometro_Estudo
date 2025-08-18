@@ -1173,4 +1173,81 @@ button:disabled {
   z-index: 50;
 }
 
+/* ===== Mini Timer flutuante ===== */
+.mini-timer{
+  position: fixed;
+  right: 16px;
+  bottom: 84px;
+  z-index: 2000;           /* garante que fica acima das tabs */
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  /* evita herdar display:none de algum container */
+  pointer-events: auto;
+}
+.hidden{ display: none !important; }
+
+
+:root.dark .mini-timer{
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+
+.mini-time{
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: .4px;
+  font-size: 1.25rem;
+  color: var(--text-dark);
+  text-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+:root.dark .mini-time{ color: #fff; }
+
+.mini-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-btn{
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--succ);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  box-shadow: var(--sh-sm);
+  border: none;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.mini-btn:hover{ transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,.16); }
+.mini-btn:active{ transform: scale(.96); }
+
+.mini-btn.danger{
+  background: var(--danger);
+}
+
+/* “grip” para indicar que dá pra arrastar (opcional, visual) */
+.mini-timer::before{
+  content:"";
+  position:absolute;
+  top:6px; left:50%;
+  transform: translateX(-50%);
+  width:36px; height:4px;
+  border-radius:999px;
+  background: rgba(0,0,0,.12);
+}
+:root.dark .mini-timer::before{ background: rgba(255,255,255,.14); }
+
+/* cursor de arrasto ao pegar no cabeçalho/área vazia */
+.mini-timer{ cursor: grab; }
+.mini-timer:active{ cursor: grabbing; }
 

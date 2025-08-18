@@ -9,6 +9,19 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="icon" type="image/png" href="static/images/icons8-stopwatch-50.png">
 </head>
+<!-- Mini Timer flutuante (fica fora das .tab para não sumir) -->
+<div id="miniTimer" class="mini-timer hidden" aria-live="polite">
+  <div class="mini-time" id="miniDisplay">00:00:00</div>
+  <div class="mini-actions">
+    <button id="miniPause" class="mini-btn" aria-label="Pausar/Retomar">
+      <i class="fas fa-pause"></i>
+    </button>
+    <button id="miniClose" class="mini-btn danger" aria-label="Fechar">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>
+
 <body>
   <!-- Loader -->
   <div id="loader" class="loader">Carregando...</div>
@@ -59,9 +72,6 @@
         <button id="minus5" class="icon-btn"><i class="fas fa-minus"></i> 5m</button>
       </div>
 
-      <!-- Botão PIP -->
-      <button id="pipBtn" class="icon-btn"><i class="fas fa-window-restore"></i> Mini Timer</button>
-      <video id="pipVideo" style="display:none;"></video>
 
       <!-- Pomodoro -->
       <div class="pomodoro-config">
